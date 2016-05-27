@@ -82,12 +82,12 @@ class DateRange(object):
                     return self._cache_interval
             else:
                 self._cache_interval = RangeType
+                return self._cache_interval
 
     def offset(self, shift=1):
         '''returns a new DateRange where start and end have been shifted.
         The RangeType object determines the shift size; e.g. a DateRange
         that has a MonthType will shift by 'shift' number of months'''
-        self.range_type
         start, end = self.range_type.shifted(self.start, shift)
         return DateRange(start, end)
 
@@ -95,7 +95,6 @@ class DateRange(object):
         return "DateRange(start={}, end={})".format(self.start, self.end)
 
     def __str__(self):
-        self.range_type
         return self.range_type.str(self.start, self.end)
 
     def __len__(self):
@@ -145,13 +144,13 @@ class DateRange(object):
         '''
         diff = []
         if self.start < other.start:
-            diff.append(DateRange(self.start, other.start - dt.timedelta(-1)))
+            diff.append(DateRange(self.start, other.start - dt.timedelta(1)))
         else:
-            diff.append("Never")
+            diff.append(DateRange("Never"))
         if other.end < self.end:
             diff.append(DateRange(other.end + dt.timedelta(1), self.end))
         else:
-            diff.append("Never")
+            diff.append(DateRange("Never"))
         return tuple(diff)
 
     @property
@@ -195,11 +194,11 @@ class DateRange(object):
 
     @property
     def split_by_quarter(self):
-        return self.split_by_range_type(self, QuarterType)
+        return self.split_by_range_type(QuarterType)
 
     @property
     def split_by_month(self):
-        return self.split_by_range_type(self, MonthType)
+        return self.split_by_range_type(MonthType)
 
 
 class RangeType(object):
@@ -225,7 +224,7 @@ class RangeType(object):
         raise NotImplementedError
 
     @staticmethod
-    def offset(date_range, offset):
+    def shifted(date_range, offset):
         raise NotImplementedError
 
 
@@ -261,7 +260,7 @@ class AlwaysType(RangeType):
 
     @staticmethod
     def parse(string):
-        if string in NeverType.aliases:
+        if string in AlwaysType.aliases:
             return dt.date.min, dt.date.max - dt.timedelta(365)
         else:
             msg = "cannot parse '{}' as AlwaysType: Expected one of {}"\
@@ -303,7 +302,7 @@ class DayType(RangeType):
 
     @staticmethod
     def shifted(date_range, shift=1):
-        return DayType.bound(date_range + dt.timedelta(1))
+        return DayType.bound(date_range + dt.timedelta(shift))
 
     @staticmethod
     def str(start, end):
@@ -329,10 +328,10 @@ class WeekType(RangeType):
         exception_msg = "date cannot be parsed, expected 'YYYY-WX' or similar"
         try:
             date = date.split('-')
-            if len(date[0]) == 4 and date[1][1] == "W":
+            if len(date[0]) == 4 and date[1][0] == "W":
                 year = int(date[0])
                 week = int(date[1][1:])
-            elif date[0][1] == "W":
+            elif date[0][0] == "W":
                 year = int(date[1])
                 week = int(date[0][1:])
             else:
@@ -418,15 +417,15 @@ class MonthType(RangeType):
         exception_msg = "date cannot be parsed, expected 'YYYY-MX' or similar"
         try:
             date = date.split('-')
-            if len(date[0]) == 4 and date[1][1] == "M":
+            if len(date[0]) == 4 and date[1][0] == "M":
                 year = int(date[0])
                 month = int(date[1][1:])
-            elif date[0][1] == "M":
+            elif date[0][0] == "M":
                 year = int(date[1])
                 month = int(date[0][1:])
             else:
                 raise ValueError(exception_msg)
-            month = pd.Period(dt.date(year, month, 1), 'M').date()
+            month = pd.Period(dt.date(year, month, 1), 'M')
         except:
             raise ValueError(exception_msg)
         return month.start_time.date(), month.end_time.date()
@@ -469,10 +468,10 @@ class QuarterType(RangeType):
         exception_msg = "date cannot be parsed, expected 'YYYY-QX' or similar"
         try:
             date = date.split('-')
-            if len(date[0]) == 4 and date[1][1] == "Q":
+            if len(date[0]) == 4 and date[1][0] == "Q":
                 year = int(date[0])
                 quarter = int(date[1][1:])
-            elif date[0][1] == "Q":
+            elif date[0][0] == "Q":
                 year = int(date[1])
                 quarter = int(date[0][1:])
             else:
@@ -685,6 +684,8 @@ class GasYearType(RangeType):
             date = date.split("-")
             if len(date[1]) == 4 and date[0] == "GY":
                 year = int(date[1])
+            elif len(date[0]) == 4 and date[1] == "GY":
+                year = int(date[0])
             else:
                 raise ValueError(exception_msg)
         except:
@@ -700,7 +701,7 @@ class GasYearType(RangeType):
     def shifted(date_range, shift=1):
         y = date_range.year + shift
         try:
-            return YearType.bound(dt.date(y, 1, 1))
+            return GasYearType.bound(dt.date(y, 10, 1))
         except:
             raise ValueError("shift size out of bounds")
 
