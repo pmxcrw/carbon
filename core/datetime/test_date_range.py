@@ -129,6 +129,22 @@ class DateRangeGenericTest(unittest.TestCase):
                   DateRange('2002'),
                   DateRange('2003')]
         self.assertEqual(output, a.split_by_range_type(YearType))
+        b = DateRange('2016-M1')
+        output = [DateRange(dt.date(2016, 1, 1), dt.date(2016, 1, 3)),
+                  DateRange('2016-W1'),
+                  DateRange('2016-W2'),
+                  DateRange('2016-W3'),
+                  DateRange('2016-W4')]
+        self.assertEqual(output, b.split_by_range_type(WeekType))
+        c = DateRange('2016-W4')
+        output = [DateRange('2016-01-25'),
+                  DateRange('2016-01-26'),
+                  DateRange('2016-01-27'),
+                  DateRange('2016-01-28'),
+                  DateRange('2016-01-29'),
+                  DateRange('2016-01-30'),
+                  DateRange('2016-01-31')]
+        self.assertEqual(output, c.split_by_range_type(DayType))
 
     def test_split_by_month(self):
         # doesn't need repeating for other strategy objects
@@ -194,9 +210,6 @@ class DateRangeAlwaysTest(unittest.TestCase):
         self.assertEqual(str(DateRange('always')), "Always")
 
 
-class DateRangeWekendTest(unittest.TestCase):
-    
-
 class DateRangeDayTest(unittest.TestCase):
 
     def test_init(self):
@@ -220,6 +233,68 @@ class DateRangeDayTest(unittest.TestCase):
 
     def test_str(self):
         self.assertEqual(str(DateRange('2016-10-1')), "2016-10-01")
+
+
+class DateRangeWeekendTest(unittest.TestCase):
+
+    def test_init(self):
+        start1 = dt.date(2014, 12, 29)
+        end1 = dt.date(2015, 1, 4)
+        a = DateRange(start1, end1)
+        b = DateRange(start1, range_type="w")
+        c = DateRange('2015-W1')
+        self.assertEqual(a.start, start1)
+        self.assertEqual(a.end, end1)
+        self.assertEqual(a.range_type, WeekType)
+        self.assertEqual(b.start, start1)
+        self.assertEqual(b.end, end1)
+        self.assertEqual(b.range_type, WeekType)
+        self.assertEqual(c.start, start1)
+        self.assertEqual(c.end, end1)
+        self.assertEqual(c.range_type, WeekType)
+
+        start1 = dt.date(2015, 4, 27)
+        end1 = dt.date(2015, 5, 3)
+        c = DateRange('2015-W18')
+        self.assertEqual(c.start, start1)
+        self.assertEqual(c.end, end1)
+        self.assertEqual(c.range_type, WeekType)
+
+        start1 = dt.date(2015, 12, 28)
+        end1 = dt.date(2016, 1, 3)
+        c = DateRange('2015-W53')
+        self.assertEqual(c.start, start1)
+        self.assertEqual(c.end, end1)
+        self.assertEqual(c.range_type, WeekType)
+
+        start1 = dt.date(2016, 12, 26)
+        end1 = dt.date(2017, 1, 1)
+        c = DateRange('2016-W52')
+        self.assertEqual(c.start, start1)
+        self.assertEqual(c.end, end1)
+        self.assertEqual(c.range_type, WeekType)
+
+    def test_offset(self):
+        a = DateRange('W52-2015')
+        b = DateRange('2016-W4')
+        self.assertEqual(a.offset(5), b)
+        a = DateRange('W2-2017')
+        b = DateRange('W52-2016')
+        self.assertEqual(a.offset(-2), b)
+
+    def test_str(self):
+        start1 = dt.date(2016, 12, 26)
+        end1 = dt.date(2017, 1, 1)
+        self.assertEqual(str(DateRange(start1, end1)), "2016-W52")
+        start1 = dt.date(2015, 12, 28)
+        end1 = dt.date(2016, 1, 3)
+        self.assertEqual(str(DateRange(start1, end1)), "2015-W53")
+        start1 = dt.date(2015, 4, 27)
+        end1 = dt.date(2015, 5, 3)
+        self.assertEqual(str(DateRange(start1, end1)), "2015-W18")
+        start1 = dt.date(2014, 12, 29)
+        end1 = dt.date(2015, 1, 4)
+        self.assertEqual(str(DateRange(start1, end1)), "2015-W1")
 
 
 class DateRangeMonthTest(unittest.TestCase):

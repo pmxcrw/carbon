@@ -165,7 +165,7 @@ class DateRange(object):
             return 0, 0
 
     def split_by_range_type(self, range_type):
-        if range_type == SummerType or WinterType:
+        if range_type == SummerType or range_type == WinterType:
             try:
                 start_range = range_type.date_range(self.start)
             except:
@@ -173,8 +173,8 @@ class DateRange(object):
                     range_type = WinterType
                 else:
                     range_type = SummerType
-        start_range = range_type.date_range(self.start)
-        if range_type == SummerType or WinterType:
+        start_range = range_type.date_range(self.start) #TODO is this line redundant, can we get rid of the if range_type and just try?
+        if range_type == SummerType or range_type == WinterType:
             try:
                 end_range = range_type.date_range(self.end)
             except:
@@ -353,10 +353,10 @@ class WeekType(RangeType):
 
     @staticmethod
     def _calc_start_and_end(year, week):
-        first_day_of_year = dt.date(year, 1, 1)
-        start_wk1 = pd.Period(first_day_of_year, 'W').start_time.date()
-        # per ISO convention, wk1 is the first week containing
-        # the first Thurs of the year.
+        # by ISO convention, the first week of the year contains the first
+        # thursday of the year, so always contains the 4th of January
+        first_week_contains = dt.date(year, 1, 4)
+        start_wk1 = pd.Period(first_week_contains, 'W').start_time.date()
         start = start_wk1 + dt.timedelta((week - 1) * 7)
         end = start + dt.timedelta(6)
         return start, end
@@ -373,11 +373,16 @@ class WeekType(RangeType):
     @staticmethod
     def _get_year_and_week(date):
         year = date.year
-        first_day_of_year = dt.date(year, 1, 1)
+        first_day_of_year = dt.date(year, 1, 4)
         start_wk1 = pd.Period(first_day_of_year, 'W').start_time.date()
-        intervening_days = (date - start_wk1).days()
-        intervening_week = math.ceil(intervening_days / 7)
-        return year, intervening_week
+        intervening_days = (date - start_wk1).days
+        intervening_week = intervening_days // 7 + 1
+        if intervening_week:
+            return WeekType._roll(year, intervening_week)
+        else:
+            year = year - 1
+            week = WeekType._max_weeks_in_year(year)
+            return year, week
 
     @staticmethod
     def date_range(date):
@@ -390,7 +395,7 @@ class WeekType(RangeType):
         week += shift
         year, week = WeekType._roll(year, week)
         start, end = WeekType._calc_start_and_end(year, week)
-        return DateRange(start, end)
+        return start, end
 
     @staticmethod
     def str(start, end):
