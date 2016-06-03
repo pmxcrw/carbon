@@ -1,4 +1,4 @@
-import date_utilities
+from core.datetime.date_utilities import workdays
 import unittest
 import pandas as pd
 import pandas.tseries.holiday
@@ -12,7 +12,7 @@ class TestDateUtilities(unittest.TestCase):
             start = dt.date(2000, 1, 1)
             end = dt.date(2000, 1, 16)
             whichdays = {"Mon", "Tue", "Wed", "Q1"}
-            date_utilities.workdays(start, end, whichdays)
+            workdays(start, end, whichdays)
         except TypeError as error:
             exp_msg = "whichdays contains {}: should be a set of strings of weekday names"\
                         .format({'Q1'})
@@ -25,7 +25,7 @@ class TestDateUtilities(unittest.TestCase):
         test_dates = pd.date_range(start, end)
         for offset, date in enumerate(test_dates):
             self.assertEqual(offset + 1,
-                             date_utilities.workdays(start, date.date(), whichdays))
+                             workdays(start, date.date(), whichdays))
 
     def test_working_week(self):
         start = dt.date(2000, 1, 1)
@@ -33,7 +33,7 @@ class TestDateUtilities(unittest.TestCase):
         whichdays = {"Mon", "Tue", "Wed", "Thu", "Fri"}
         test_dates = pd.date_range(start, end)
         expected_output = [0, 0, 1, 2, 3, 4, 5, 5, 5, 6, 7, 8, 9, 10, 10, 10]
-        test_output = [date_utilities.workdays(start, date.date(), whichdays)
+        test_output = [workdays(start, date.date(), whichdays)
                        for date in test_dates]
         self.assertEqual(expected_output, test_output)
 
@@ -43,7 +43,7 @@ class TestDateUtilities(unittest.TestCase):
         whichdays = {"Sat", "Sun"}
         test_dates = pd.date_range(start, end)
         expected_output = [1, 2, 2, 2, 2, 2, 2, 3, 4, 4, 4, 4, 4, 4, 5, 6]
-        test_output = [date_utilities.workdays(start, date, whichdays)
+        test_output = [workdays(start, date, whichdays)
                        for date in test_dates]
         self.assertEqual(expected_output, test_output)
 
@@ -53,7 +53,7 @@ class TestDateUtilities(unittest.TestCase):
         whichdays = "Mon"
         test_dates = pd.date_range(start, end)
         expected_output = [0, 0, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2]
-        test_output = [date_utilities.workdays(start, date, whichdays)
+        test_output = [workdays(start, date, whichdays)
                        for date in test_dates]
         self.assertEqual(expected_output, test_output)
 
@@ -63,7 +63,7 @@ class TestDateUtilities(unittest.TestCase):
         whichdays = ["Mon", "Fri"]
         test_dates = pd.date_range(start, end)
         expected_output = [0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4]
-        test_output = [date_utilities.workdays(start, date, whichdays)
+        test_output = [workdays(start, date, whichdays)
                        for date in test_dates]
         self.assertEqual(expected_output, test_output)
 
@@ -74,7 +74,7 @@ class TestDateUtilities(unittest.TestCase):
         whichdays = {"Mon", "Tue", "Wed", "Thu", "Fri"}
         test_dates = pd.date_range(start, end)
         expected_output = [0, 1, 2, 3, 4, 4, 4, 5, 6, 7, 8, 9, 9, 9, 9, 10]
-        test_output = [date_utilities.workdays(start, d.date(), whichdays, hol)
+        test_output = [workdays(start, d.date(), whichdays, hol)
                        for d in test_dates]
         self.assertEqual(expected_output, test_output)
 
@@ -84,6 +84,6 @@ class TestDateUtilities(unittest.TestCase):
         whichdays = {"Mon", "Tue", "Wed", "Thu", "Fri"}
         test_dates = pd.date_range(start, end)
         expected_output = [1, 2, 3, 4, 5, 5, 5, 6, 7, 8, 9, 10, 10, 10, 11, 12]
-        test_output = [date_utilities.workdays(start, date.date(), whichdays)
+        test_output = [workdays(start, date.date(), whichdays)
                        for date in test_dates]
         self.assertEqual(expected_output, test_output)
