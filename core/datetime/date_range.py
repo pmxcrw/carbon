@@ -1,7 +1,7 @@
 import datetime as dt
 import math
 import pandas as pd
-import core.datetime.date_utilities as cddu
+from core.datetime.date_utilities import workdays
 
 
 def date_ranges(dates):
@@ -39,6 +39,7 @@ class DateRange(object):
                     raise ValueError(msg)
             elif range_type:
                 # this is case 2
+                range_type = range_type.lower().strip()
                 for known_range_type in RangeType.__subclasses__():
                     if range_type in known_range_type.aliases:
                         self.start, self.end = known_range_type.bound(start)
@@ -59,6 +60,7 @@ class DateRange(object):
                 raise ValueError(msg)
             else:
                 # this is case 3
+                start = start.lower().strip()
                 for known_range_type in RangeType.__subclasses__():
                     try:
                         self.start, self.end = known_range_type.parse(start)
@@ -146,11 +148,11 @@ class DateRange(object):
         if self.start < other.start:
             diff.append(DateRange(self.start, other.start - dt.timedelta(1)))
         else:
-            diff.append(DateRange("Never"))
+            diff.append(DateRange("never"))
         if other.end < self.end:
             diff.append(DateRange(other.end + dt.timedelta(1), self.end))
         else:
-            diff.append(DateRange("Never"))
+            diff.append(DateRange("never"))
         return tuple(diff)
 
     @property
@@ -158,32 +160,33 @@ class DateRange(object):
         '''Returns the number of weekdays and weekend days'''
         weekend_count = len(self)
         if weekend_count:
-            weekday_count = cddu.workdays(self.start, self.end)
+            weekday_count = workdays(self.start, self.end)
             weekend_count -= weekday_count
             return weekday_count, weekend_count
         else:
             return 0, 0
 
     def split_by_range_type(self, range_type):
-        if range_type == SummerType or range_type == WinterType:
-            try:
-                start_range = range_type.date_range(self.start)
-            except:
-                if range_type == SummerType:
-                    range_type = WinterType
-                else:
-                    range_type = SummerType
-        start_range = range_type.date_range(self.start) #TODO is this line redundant, can we get rid of the if range_type and just try?
-        if range_type == SummerType or range_type == WinterType:
-            try:
-                end_range = range_type.date_range(self.end)
-            except:
-                if range_type == SummerType:
-                    end_range = WinterType.date_range(self.end)
-                else:
-                    end_range = SummerType.date_range(self.end)
-        else:
+        try:
+            start_range = range_type.date_range(self.start)
+        except:
+            # only reason for excepting is if the range_type can't contain
+            # the date self.start - which is only the case for SummerType
+            # and WinterType. In this case we want to switch types.
+            if range_type == SummerType:
+                start_range = WinterType.date_range(self.start)
+            elif range_type == WinterType:
+                start_range = SummerType.date_range(self.start)
+        try:
             end_range = range_type.date_range(self.end)
+        except:
+            # only reason for excepting is if the range_type can't contain
+            # the date self.start - which is only the case for SummerType
+            # and WinterType. In this case we want to switch types.
+            if range_type == SummerType:
+                end_range = WinterType.date_range(self.end)
+            elif range_type == WinterType:
+                end_range = SummerType.date_range(self.end)
         output = [self.intersection(start_range)]
         start_range = start_range.offset(1)
         while start_range.start < end_range.start:
@@ -230,7 +233,7 @@ class RangeType(object):
 
 class NeverType(RangeType):
 
-    aliases = {"Never", "never", "NaT", "NA"}
+    aliases = {"never", "nat", "na"}
 
     @staticmethod
     def validate(start, end):
@@ -252,7 +255,7 @@ class NeverType(RangeType):
 
 class AlwaysType(RangeType):
 
-    aliases = {"Always", "always", "Forever", "forever"}
+    aliases = {"always", "forever"}
 
     @staticmethod
     def validate(start, end):
@@ -274,7 +277,7 @@ class AlwaysType(RangeType):
 
 class DayType(RangeType):
 
-    aliases = {"Day", "D", "day", "d"}
+    aliases = {"day", "d"}
 
     @staticmethod
     def validate(start, end):
@@ -286,14 +289,14 @@ class DayType(RangeType):
 
     @staticmethod
     def parse(date):
-        exception_msg = "date cannot be parsed, expected 'YYYY-MM-DD' or similar"
+        except_msg = "date cannot be parsed, expected 'YYYY-MM-DD' or similar"
         if len(date) > 7:
             try:
                 date = pd.Timestamp(date).date()
             except:
-                raise ValueError(exception_msg)
+                raise ValueError(except_msg)
             return DayType.bound(date)
-        raise ValueError(exception_msg)
+        raise ValueError(except_msg)
 
     @staticmethod
     def date_range(date):
@@ -311,7 +314,7 @@ class DayType(RangeType):
 
 class WeekType(RangeType):
 
-    aliases = {"Week", "Wk", "W", "week", "wk", "w"}
+    aliases = {"week", "wk", "w"}
 
     @staticmethod
     def validate(start, end):
@@ -328,12 +331,10 @@ class WeekType(RangeType):
         exception_msg = "date cannot be parsed, expected 'YYYY-WX' or similar"
         try:
             date = date.split('-')
-            if len(date[0]) == 4 and date[1][0] == "W":
+            date.sort()
+            if len(date[0]) == 4 and date[1][0] == "w":
                 year = int(date[0])
                 week = int(date[1][1:])
-            elif date[0][0] == "W":
-                year = int(date[1])
-                week = int(date[0][1:])
             else:
                 raise ValueError(exception_msg)
             year, week = WeekType._roll(year, week)
@@ -363,8 +364,8 @@ class WeekType(RangeType):
 
     @staticmethod
     def _max_weeks_in_year(year):
-        start, end_week53 = WeekType._calc_start_and_end(year, 53)
-        start_week1, end = WeekType._calc_start_and_end(year + 1, 1)
+        _, end_week53 = WeekType._calc_start_and_end(year, 53)
+        start_week1, _ = WeekType._calc_start_and_end(year + 1, 1)
         if end_week53 < start_week1:
             return 53
         else:
@@ -405,7 +406,7 @@ class WeekType(RangeType):
 
 class MonthType(RangeType):
 
-    aliases = {"Month", "Mth", "M", "month", "mth", "m"}
+    aliases = {"month", "mth", "m"}
 
     @staticmethod
     def validate(start, end):
@@ -422,12 +423,10 @@ class MonthType(RangeType):
         exception_msg = "date cannot be parsed, expected 'YYYY-MX' or similar"
         try:
             date = date.split('-')
-            if len(date[0]) == 4 and date[1][0] == "M":
+            date.sort()
+            if len(date[0]) == 4 and date[1][0] == "m":
                 year = int(date[0])
                 month = int(date[1][1:])
-            elif date[0][0] == "M":
-                year = int(date[1])
-                month = int(date[0][1:])
             else:
                 raise ValueError(exception_msg)
             month = pd.Period(dt.date(year, month, 1), 'M')
@@ -456,7 +455,7 @@ class MonthType(RangeType):
 
 class QuarterType(RangeType):
 
-    aliases = {"Quarter", "Qtr", "Q", "quarter", "qtr", "q"}
+    aliases = {"quarter", "qtr", "q"}
 
     @staticmethod
     def validate(start, end):
@@ -473,12 +472,10 @@ class QuarterType(RangeType):
         exception_msg = "date cannot be parsed, expected 'YYYY-QX' or similar"
         try:
             date = date.split('-')
-            if len(date[0]) == 4 and date[1][0] == "Q":
+            date.sort()
+            if len(date[0]) == 4 and date[1][0] == "q":
                 year = int(date[0])
                 quarter = int(date[1][1:])
-            elif date[0][0] == "Q":
-                year = int(date[1])
-                quarter = int(date[0][1:])
             else:
                 raise ValueError(exception_msg)
             quarter = pd.Period(dt.date(year, quarter * 3, 1), 'Q')
@@ -507,7 +504,7 @@ class QuarterType(RangeType):
 
 class SummerType(RangeType):
 
-    aliases = {"Summer", "Sum", "SUM", "summer", "sum"}
+    aliases = {"summer", "sum"}
 
     @staticmethod
     def validate(start, end):
@@ -527,10 +524,9 @@ class SummerType(RangeType):
         exception_msg = "date cannot be parsed, expected 'YYYY-SUM' or similar"
         try:
             date = date.split('-')
-            if len(date[0]) == 4 and date[1] == "SUM":
+            date.sort()
+            if len(date[0]) == 4 and date[1] == "sum":
                 year = int(date[0])
-            elif date[0] == "SUM":
-                year = int(date[1])
             else:
                 raise ValueError(exception_msg)
         except:
@@ -561,7 +557,7 @@ class SummerType(RangeType):
 
 class WinterType(RangeType):
 
-    aliases = {"Winter", "Win", "WIN", "winter", "win"}
+    aliases = {"winter", "win"}
 
     @staticmethod
     def validate(start, end):
@@ -587,10 +583,9 @@ class WinterType(RangeType):
         exception_msg = "date cannot be parsed, expected 'YYYY-WIN' or similar"
         try:
             date = date.split('-')
-            if len(date[0]) == 4 and date[1] == "WIN":
+            date.sort()
+            if len(date[0]) == 4 and date[1] == "win":
                 year = int(date[0])
-            elif date[0] == "WIN":
-                year = int(date[1])
             else:
                 raise ValueError(exception_msg)
         except:
@@ -619,9 +614,10 @@ class WinterType(RangeType):
     def str(start, end):
         return "{}-WIN".format(start.year)
 
+
 class YearType(RangeType):
 
-    aliases = {"Year", "Yr", "Y", "year", "yr", "y"}
+    aliases = {"year", "yr", "y"}
 
     @staticmethod
     def validate(start, end):
@@ -665,8 +661,7 @@ class YearType(RangeType):
 
 class GasYearType(RangeType):
 
-    aliases = {"Gas Year", "Gas_Year", "GY", "GasYear",
-               "gas year", "gas_year", "gy"}
+    aliases = {"gasyear", "gas year", "gas_year", "gy"}
 
     @staticmethod
     def validate(start, end):
@@ -687,9 +682,8 @@ class GasYearType(RangeType):
         exception_msg = "date cannot be parsed, expected 'GY-YYYY' or similar"
         try:
             date = date.split("-")
-            if len(date[1]) == 4 and date[0] == "GY":
-                year = int(date[1])
-            elif len(date[0]) == 4 and date[1] == "GY":
+            date.sort()
+            if len(date[0]) == 4 and date[1] == "gy":
                 year = int(date[0])
             else:
                 raise ValueError(exception_msg)
