@@ -1,4 +1,4 @@
-from core.datetime.date_utilities import workdays
+from core.time_period.date_utilities import workdays
 import unittest
 import pandas as pd
 import pandas.tseries.holiday

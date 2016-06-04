@@ -1,4 +1,4 @@
-from core.datetime.date_range import DateRange, RangeType, NeverType,\
+from core.time_period.date_range import DateRange, RangeType, NeverType,\
     AlwaysType, DayType, WeekType, MonthType, QuarterType, YearType, GasYearType,\
     SummerType, WinterType
 

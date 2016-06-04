@@ -1,9 +1,9 @@
-from core.datetime.relative_date_range import RelativeDateRange, RelativeRangeType,\
+from core.time_period.relative_date_range import RelativeDateRange, RelativeRangeType,\
     CalendarDayAheadType, DayAheadType, WeekendAheadType, WeekAheadType, MonthAheadType,\
     QuarterAheadType, SeasonAheadType, SummerAheadType, WinterAheadType, YearAheadType,\
     GasYearAheadType, BalanceOfMonthType
 
-from core.datetime.date_range import DateRange
+from core.time_period.date_range import DateRange
 
 import unittest
 import datetime as dt

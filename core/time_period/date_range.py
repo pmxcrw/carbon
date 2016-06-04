@@ -1,7 +1,7 @@
 import datetime as dt
 import math
 import pandas as pd
-from core.datetime.date_utilities import workdays
+from core.time_period.date_utilities import workdays
 
 
 def date_ranges(dates):

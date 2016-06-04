@@ -1,5 +1,5 @@
 import datetime as dt
-from core.datetime.date_range import DateRange
+from core.time_period.date_range import DateRange
 
 
 class RelativeDateRange(object):
