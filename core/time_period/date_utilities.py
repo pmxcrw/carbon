@@ -1,5 +1,8 @@
+import datetime as dt
 
 DAYS_PER_YEAR = 365.0
+END_OF_WORLD = dt.date.max - dt.timedelta(365)
+START_OF_WORLD = dt.date.min
 
 
 def time_between(start_date, end_date):

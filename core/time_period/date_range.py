@@ -1,14 +1,7 @@
 import datetime as dt
 import math
 import pandas as pd
-from core.time_period.date_utilities import workdays
-
-
-def date_ranges(dates):
-    '''Builds a sequence of DateRanges that spans the
-    input (sorted) list of dates'''
-    return [DateRange(start, end - dt.timedelta(1))
-            for start, end in zip(dates[:-1], dates[1:])]
+from core.time_period.date_utilities import workdays, START_OF_WORLD, END_OF_WORLD
 
 
 class DateRange(object):
@@ -177,6 +170,8 @@ class DateRange(object):
                 start_range = WinterType.date_range(self.start)
             elif range_type == WinterType:
                 start_range = SummerType.date_range(self.start)
+            else:
+                raise ValueError("range_type is unknown")
         try:
             end_range = range_type.date_range(self.end)
         except:
@@ -187,6 +182,8 @@ class DateRange(object):
                 end_range = WinterType.date_range(self.end)
             elif range_type == WinterType:
                 end_range = SummerType.date_range(self.end)
+            else:
+                raise ValueError("range_type is unknown")
         output = [self.intersection(start_range)]
         start_range = start_range.offset(1)
         while start_range.start < end_range.start:
@@ -237,12 +234,12 @@ class NeverType(RangeType):
 
     @staticmethod
     def validate(start, end):
-        return start == dt.date.max - dt.timedelta(365) and end == dt.date.min
+        return start == END_OF_WORLD and end == START_OF_WORLD
 
     @staticmethod
     def parse(string):
         if string in NeverType.aliases:
-            return dt.date.max - dt.timedelta(365), dt.date.min
+            return END_OF_WORLD, START_OF_WORLD
         else:
             msg = "cannot parse '{}' as NeverType: Expected one of {}"\
                     .format(string, NeverType.aliases)
@@ -259,12 +256,12 @@ class AlwaysType(RangeType):
 
     @staticmethod
     def validate(start, end):
-        return start == dt.date.min and end == dt.date.max - dt.timedelta(365)
+        return start == START_OF_WORLD and end == END_OF_WORLD
 
     @staticmethod
     def parse(string):
         if string in AlwaysType.aliases:
-            return dt.date.min, dt.date.max - dt.timedelta(365)
+            return START_OF_WORLD, END_OF_WORLD
         else:
             msg = "cannot parse '{}' as AlwaysType: Expected one of {}"\
                     .format(string, NeverType.aliases)
@@ -290,7 +287,7 @@ class DayType(RangeType):
     @staticmethod
     def parse(date):
         except_msg = "date cannot be parsed, expected 'YYYY-MM-DD' or similar"
-        if len(date) > 7:
+        if len(date) > 7 and date.count('-') != 1:
             try:
                 date = pd.Timestamp(date).date()
             except:
@@ -707,3 +704,15 @@ class GasYearType(RangeType):
     @staticmethod
     def str(start, end):
         return "GY-{}".format(start.year)
+
+
+# helper function for use in other modules
+def date_ranges(dates):
+    '''Builds a sequence of DateRanges that spans the
+    input (sorted) list of dates'''
+    return [DateRange(start, end - dt.timedelta(1))
+            for start, end in zip(dates[:-1], dates[1:])]
+
+
+# precompute NEVER_DATE_RANGE for use in other modules efficiently
+NEVER_DR = DateRange(END_OF_WORLD, START_OF_WORLD)

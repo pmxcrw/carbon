@@ -1,6 +1,6 @@
 from core.time_period.load_shape import LoadShape, BASE, PEAK, OFFPEAK, WEEKDAY,\
     WEEKDAY_OFFPEAK, WEEKEND, WEEKEND_PEAK, WEEKEND_OFFPEAK, DAYTIME, NIGHTTIME, \
-    EXTENDED_DAYTIME, EXTENDED_PEAK, WEEKEND_EXTENDED_PEAK, NEVER, HOURS,  EFAS, \
+    EXTENDED_DAYTIME, EXTENDED_PEAK, WEEKEND_EXTENDED_PEAK, NEVER_LS, HOURS,  EFAS, \
     WEEKDAY_EFAS, WEEKEND_EFAS
 
 import unittest
@@ -43,7 +43,7 @@ class LoadShapeTests(unittest.TestCase):
         self.assertTrue(WEEKDAY.intersects(EXTENDED_PEAK))
         self.assertFalse(WEEKDAY_OFFPEAK.intersects(WEEKEND_EXTENDED_PEAK))
         self.assertTrue(HOURS[1], EFAS[1])
-        self.assertFalse(WEEKDAY_EFAS[4].intersects(NEVER))
+        self.assertFalse(WEEKDAY_EFAS[4].intersects(NEVER_LS))
 
     def test_efa(self):
         self.assertTrue(HOURS[0].intersects(EFAS[0]))
@@ -63,13 +63,13 @@ class LoadShapeTests(unittest.TestCase):
 
     def test_difference(self):
         self.assertEqual(BASE.difference(OFFPEAK), PEAK)
-        self.assertEqual(PEAK.difference(BASE), NEVER)
+        self.assertEqual(PEAK.difference(BASE), NEVER_LS)
         self.assertEqual(EXTENDED_PEAK.difference(PEAK), WEEKDAY_EFAS[5])
 
     def test_complement(self):
         self.assertEqual(PEAK.complement(), OFFPEAK)
         self.assertEqual(EFAS[3].complement().complement(), EFAS[3])
-        self.assertEqual(NEVER.complement(), BASE)
+        self.assertEqual(NEVER_LS.complement(), BASE)
 
     def test_union(self):
         self.assertEqual(PEAK.union(OFFPEAK), BASE)
@@ -92,7 +92,7 @@ class LoadShapeTests(unittest.TestCase):
 
     def test_intersection(self):
         self.assertEqual(PEAK.intersection(BASE), PEAK)
-        self.assertEqual(PEAK.intersection(OFFPEAK), NEVER)
+        self.assertEqual(PEAK.intersection(OFFPEAK), NEVER_LS)
         self.assertEqual(OFFPEAK.intersection(WEEKEND), WEEKEND)
 
     def test_partition(self):
@@ -120,26 +120,26 @@ class LoadShapeTests(unittest.TestCase):
         self.assertEqual(LoadShape.partition({}), set())
 
     def test_weekday_load_factor(self):
-        self.assertEqual(BASE.weekday_load_factor(), 1)
-        self.assertEqual(WEEKDAY.weekday_load_factor(), 1)
-        self.assertEqual(WEEKEND.weekday_load_factor(), 0)
-        self.assertEqual(EFAS[0].weekday_load_factor(), 4/24)
-        self.assertEqual(WEEKDAY_EFAS[1].weekday_load_factor(), 4/24)
-        self.assertEqual(WEEKEND_EFAS[1].weekday_load_factor(), 0)
-        self.assertEqual(NEVER.weekday_load_factor(), 0)
+        self.assertEqual(BASE.weekday_load_factor, 1)
+        self.assertEqual(WEEKDAY.weekday_load_factor, 1)
+        self.assertEqual(WEEKEND.weekday_load_factor, 0)
+        self.assertEqual(EFAS[0].weekday_load_factor, 4/24)
+        self.assertEqual(WEEKDAY_EFAS[1].weekday_load_factor, 4/24)
+        self.assertEqual(WEEKEND_EFAS[1].weekday_load_factor, 0)
+        self.assertEqual(NEVER_LS.weekday_load_factor, 0)
 
     def test_weekend_load_factor(self):
-        self.assertEqual(BASE.weekend_load_factor(), 1)
-        self.assertEqual(WEEKDAY.weekend_load_factor(), 0)
-        self.assertEqual(WEEKEND.weekend_load_factor(), 1)
-        self.assertEqual(EFAS[0].weekend_load_factor(), 4/24)
-        self.assertEqual(WEEKDAY_EFAS[1].weekend_load_factor(), 0)
-        self.assertEqual(WEEKEND_EFAS[1].weekend_load_factor(), 4/24)
-        self.assertEqual(NEVER.weekend_load_factor(), 0)
+        self.assertEqual(BASE.weekend_load_factor, 1)
+        self.assertEqual(WEEKDAY.weekend_load_factor, 0)
+        self.assertEqual(WEEKEND.weekend_load_factor, 1)
+        self.assertEqual(EFAS[0].weekend_load_factor, 4/24)
+        self.assertEqual(WEEKDAY_EFAS[1].weekend_load_factor, 0)
+        self.assertEqual(WEEKEND_EFAS[1].weekend_load_factor, 4/24)
+        self.assertEqual(NEVER_LS.weekend_load_factor, 0)
 
     def test_str(self):
         self.assertEqual(str(BASE), 'Base')
-        self.assertEqual(str(NEVER), 'Never')
+        self.assertEqual(str(NEVER_LS), 'Never')
         self.assertEqual(str(HOURS[7]), 'H07')
         self.assertEqual(str(HOURS[7].intersection(WEEKDAY)), 'Weekday-H07')
         self.assertEqual(str(HOURS[13].intersection(WEEKEND)), 'Weekend-H13')
