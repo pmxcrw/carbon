@@ -1,8 +1,10 @@
-from core.time_period.date_utilities import workdays
+import datetime as dt
 import unittest
+
 import pandas as pd
 import pandas.tseries.holiday
-import datetime as dt
+
+from core.time_period.date_utilities import workdays
 
 
 class TestDateUtilities(unittest.TestCase):
@@ -11,21 +13,21 @@ class TestDateUtilities(unittest.TestCase):
         try:
             start = dt.date(2000, 1, 1)
             end = dt.date(2000, 1, 16)
-            whichdays = {"Mon", "Tue", "Wed", "Q1"}
-            workdays(start, end, whichdays)
+            which_days = {"Mon", "Tue", "Wed", "Q1"}
+            workdays(start, end, which_days)
         except TypeError as error:
-            exp_msg = "whichdays contains {}: should be a set of strings of weekday names"\
+            exp_msg = "which_days contains {}: should be a set of strings of weekday names"\
                         .format({'Q1'})
             self.assertEqual(exp_msg, error.args[0])
 
     def test_fulldays(self):
         start = dt.date(2000, 1, 16)
         end = dt.date(2000, 2, 1)
-        whichdays = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
+        which_days = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
         test_dates = pd.date_range(start, end)
         for offset, date in enumerate(test_dates):
             self.assertEqual(offset + 1,
-                             workdays(start, date.date(), whichdays))
+                             workdays(start, date.date(), which_days))
 
     def test_working_week(self):
         start = dt.date(2000, 1, 1)

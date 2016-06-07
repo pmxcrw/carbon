@@ -1,16 +1,17 @@
+# TODO: improve docstrings
 
 
 class LoadShape(object):
 
-    # create the dictionary for the multiton pattern
+    # create the dictionary for the Multiton pattern
     _instances = dict()
 
     def __new__(cls, bitmap, name=None):
-        ''' uses __new__ rather than __init__ to implement the
-        multiton pattern
-
-        because of the use of the multiton patter, name will be ignored
-        if there's an existing LoadShape object with a different name'''
+        # Uses __new__ rather than __init__ to implement the
+        # multiton pattern
+        #
+        # because of the use of the multiton patter, name will be ignored
+        # if there's an existing LoadShape object with a different name
         try:
             return cls._instances[bitmap]
         except KeyError:
@@ -36,12 +37,13 @@ class LoadShape(object):
                             return cls._instances[bitmap]
                 else:
                     msg = "cannot parse '{}': ".format(bitmap)
-                    msg = "unknown type of LoadShape"
+                    msg += "unknown type of LoadShape"
                     raise ValueError(msg)
 
     @staticmethod
     def create_bitmap(start, end, weekdays, weekends):
-        ''' creates a bitmap that can be used to initialise a LoadShape instance.
+        """
+        Creates a bitmap that can be used to initialise a LoadShape instance.
 
         Bitmap is an int who's binary representation indicates the loadshape
         profile: leftmost 24 bits represent weekend loadshape, rightmost 24
@@ -49,8 +51,7 @@ class LoadShape(object):
 
         This helper function creates a bitmap to be True between start and end
         (inclusive on left, exclusive on right) for weekdays and / or weekends
-
-        '''
+        """
         assert start < end
         bitmap = ['0'] * 48
         if weekdays or weekends:
@@ -61,45 +62,14 @@ class LoadShape(object):
                 bitmap[start+24:end+24] = ones
         return int("0b" + "".join(reversed(bitmap)), 2)
 
-    @staticmethod
-    def partition(load_shape_set):
-        '''Returns the minimal set of disjoint load shapes such that every element
-        of load_shape_set is a union of disjoint load shapes.
-
-        The partition is the set of equivalence classes of the equivalence
-        relationship:
-
-            if a and b are two bits from the LoadShape bitmap
-            a == b iff they intersect the same members of load_shape_set
-        excluding the equivalence class which doesn't intersect any elements
-        of load_shape_set'''
-        load_shapes = list(load_shape_set)
-        equiv_classes = {}
-        for i in range(48):
-            # create the bitmap for the single bit load shape
-            sbls = LoadShape(2 ** i)
-            # find the subset of load_shape_set which intersects with
-            # the single bit load shape
-            intersecting_load_shape_set = frozenset(ls for ls in load_shapes
-                                                    if ls.intersects(sbls))
-            # append the single_bit_load_shape into a dictionary keyed by the
-            # subset. This dict stores the equivalence classes
-            if intersecting_load_shape_set != frozenset([]):
-                if intersecting_load_shape_set not in equiv_classes:
-                    equiv_classes[intersecting_load_shape_set] = sbls.bitmap
-                else:
-                    equiv_classes[intersecting_load_shape_set] |= sbls.bitmap
-
-        # form the set of LoadShape objects initialised by the bitmaps
-        partition_set = set(LoadShape(bmap) for bmap in equiv_classes.values())
-        return partition_set
-
     def intersects(self, other):
         return self.bitmap & other.bitmap
 
     def intersection(self, other, name=None):
-        '''creates a new LoadShape with intersecting load shape
-        name can optionally be provided and passed to the new object'''
+        """
+        Creates a new LoadShape with intersecting load shape
+        name can optionally be provided and passed to the new object
+        """
         return LoadShape(self.bitmap & other.bitmap, name)
 
     def __contains__(self, lhs):
@@ -116,9 +86,11 @@ class LoadShape(object):
         return BASE.difference(self, name)
 
     def _load_factor(self, reference_load):
-        '''helper function for weekend_load_factor and weekday_load_factor
+        """
+        Helper function for weekend_load_factor and weekday_load_factor
         reference bitmap is the BASE loadshape for the time period of
-        interest'''
+        interest
+        """
         bitmap = self.bitmap & reference_load.bitmap
         hours = bin(bitmap).count('1')
         return hours / 24
@@ -152,9 +124,11 @@ class LoadShape(object):
 
     @property
     def is_hour(self):
-        '''returns true if there's exactly one hour in weekday,
+        """
+        Returns true if there's exactly one hour in weekday,
         exactly one hour in weekend, or the same hour occurs exactly once
-        in both weekday and weekend'''
+        in both weekday and weekend
+        """
         bin_string = "{0:b}".format(self.bitmap).zfill(48)
         weekends = bin_string[:24][::-1].count('1')
         weekdays = bin_string[24:][::-1].count('1')

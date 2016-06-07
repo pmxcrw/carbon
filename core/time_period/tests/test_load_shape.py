@@ -1,9 +1,9 @@
+import unittest
+
 from core.time_period.load_shape import LoadShape, BASE, PEAK, OFFPEAK, WEEKDAY,\
     WEEKDAY_OFFPEAK, WEEKEND, WEEKEND_PEAK, WEEKEND_OFFPEAK, DAYTIME, NIGHTTIME, \
     EXTENDED_DAYTIME, EXTENDED_PEAK, WEEKEND_EXTENDED_PEAK, NEVER_LS, HOURS,  EFAS, \
     WEEKDAY_EFAS, WEEKEND_EFAS
-
-import unittest
 
 
 class LoadShapeTests(unittest.TestCase):
@@ -95,30 +95,6 @@ class LoadShapeTests(unittest.TestCase):
         self.assertEqual(PEAK.intersection(OFFPEAK), NEVER_LS)
         self.assertEqual(OFFPEAK.intersection(WEEKEND), WEEKEND)
 
-    def test_partition(self):
-        self.assertEqual(LoadShape.partition({PEAK}), {PEAK})
-        BASE_PEAK = {BASE, PEAK}
-        PEAK_OFFPEAK = {PEAK, OFFPEAK}
-        self.assertEqual(LoadShape.partition(BASE_PEAK), PEAK_OFFPEAK)
-        DT_NT = {DAYTIME, NIGHTTIME}
-        self.assertEqual(LoadShape.partition(DT_NT), DT_NT)
-        WD_WE = {WEEKDAY, WEEKEND}
-        self.assertEqual(LoadShape.partition(WD_WE), WD_WE)
-        WEOP_WDOP_WEPK = {WEEKEND_OFFPEAK, WEEKDAY_OFFPEAK, WEEKEND_PEAK}
-        self.assertEqual(LoadShape.partition(WEOP_WDOP_WEPK), WEOP_WDOP_WEPK)
-        WEOP_BASE_WDOP_WEPK = {WEEKEND_OFFPEAK, BASE, WEEKDAY_OFFPEAK,
-                               WEEKEND_PEAK}
-        WEOP_PEAK_WDOP_WEPK = {WEEKEND_OFFPEAK, PEAK, WEEKDAY_OFFPEAK,
-                               WEEKEND_PEAK}
-        self.assertEqual(LoadShape.partition(WEOP_BASE_WDOP_WEPK),
-                         WEOP_PEAK_WDOP_WEPK)
-        WDOP_WDP_WEOP_WEP = {WEEKEND_OFFPEAK, PEAK, WEEKEND_PEAK,
-                            WEEKDAY_OFFPEAK}
-        self.assertEqual(LoadShape.partition(WDOP_WDP_WEOP_WEP),
-                         WDOP_WDP_WEOP_WEP)
-
-        self.assertEqual(LoadShape.partition({}), set())
-
     def test_weekday_load_factor(self):
         self.assertEqual(BASE.weekday_load_factor, 1)
         self.assertEqual(WEEKDAY.weekday_load_factor, 1)
@@ -168,5 +144,3 @@ class LoadShapeTests(unittest.TestCase):
                     LoadShape('Weekend-H14'),
                     LoadShape('Weekend-H15')]
         self.assertEqual([h for h in LoadShape('EFA4')], expected)
-
-

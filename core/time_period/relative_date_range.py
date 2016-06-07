@@ -1,3 +1,5 @@
+# TODO: improve docstrings
+
 import datetime as dt
 from core.time_period.date_range import DateRange
 
@@ -62,7 +64,7 @@ class DayAheadType(RelativeRangeType):
                 offset -= 1
             elif offset < 0:
                 obs_date += dt.timedelta(4 - weekday)
-                offset +=1
+                offset += 1
             else:
                 msg = "offset of zero and an obs_date falling in a weekend is "
                 msg += "ambiguous for a DA fix"
@@ -166,7 +168,7 @@ class SeasonAheadType(RelativeRangeType):
         range_type = "sum"
         try:
             output = DateRange(start=obs_date, range_type=range_type)
-        except:
+        except ValueError:
             range_type = "win"
             output = DateRange(start=obs_date, range_type=range_type)
         if offset == 0:
@@ -189,7 +191,7 @@ class SummerAheadType(RelativeRangeType):
         range_type = "sum"
         try:
             output = DateRange(start=obs_date, range_type=range_type)
-        except:
+        except ValueError:
             range_type = "win"
             output = DateRange(start=obs_date, range_type=range_type)
         if offset == 0:
@@ -220,7 +222,7 @@ class WinterAheadType(RelativeRangeType):
         range_type = "win"
         try:
             output = DateRange(start=obs_date, range_type=range_type)
-        except:
+        except ValueError:
             range_type = "sum"
             output = DateRange(start=obs_date, range_type=range_type)
         if offset == 0:
@@ -279,7 +281,7 @@ class BalanceOfMonthType(RelativeRangeType):
 
     @staticmethod
     def fix(obs_date, offset):
-        '''ignores offset'''
+        """ignores offset"""
         if obs_date.month == 12:
             year = obs_date.year + 1
             month = 1
@@ -312,4 +314,3 @@ class DecemberAhead(RelativeRangeType):
             else:
                 output = dt.date(obs_date.year + offset, 12, 1)
             return DateRange(start=output, range_type='m')
-

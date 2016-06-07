@@ -1,9 +1,8 @@
-from core.time_period.relative_date_range import RelativeDateRange
+import datetime as dt
+import unittest
 
 from core.time_period.date_range import DateRange
-
-import unittest
-import datetime as dt
+from core.time_period.relative_date_range import RelativeDateRange
 
 
 class TestRelativeDateRange(unittest.TestCase):
@@ -250,4 +249,3 @@ class TestRelativeDateRange(unittest.TestCase):
                          RelativeDateRange('deca', -1).fix(self.date))
         self.assertEqual(DateRange(start=new_date, range_type='m').offset(-12),
                          RelativeDateRange('deca', -1).fix(new_date))
- 

@@ -1,3 +1,6 @@
+# TODO: analyse whether the Pandas holiday calendars are useful, or is there a more efficient solution
+# TODO: improve docstrings
+
 import datetime as dt
 
 DAYS_PER_YEAR = 365.0
@@ -6,40 +9,40 @@ START_OF_WORLD = dt.date.min
 
 
 def time_between(start_date, end_date):
-    '''Calculates the time between two dates as a fraction of a year'''
+    """Calculates the time between two dates as a fraction of a year"""
     return (end_date - start_date).days / DAYS_PER_YEAR
 
 
 def workdays(start_date,
              end_date,
-             whichdays={"Mon", "Tue", "Wed", "Thu", "Fri"},
+             which_days={"Mon", "Tue", "Wed", "Thu", "Fri"},
              hol_cal=None):
-    '''
+    """
     Calculates the number of working days between two dates, inclusive
     (start_date <= end_date)
 
-    The actual working days can be set with the optional whichdays parameter
-    '''
-    # first force whichdays to be a set
-    if type(whichdays) == str:
-        whichdays = [whichdays]
-    if type(whichdays) == list:
-        whichdays = set(whichdays)
+    The actual working days can be set with the optional which_days parameter
+    """
+    # first force which_days to be a set
+    if type(which_days) == str:
+        which_days = [which_days]
+    if type(which_days) == list:
+        which_days = set(which_days)
 
     days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     day_set = set(days)
 
     # then test the set has valid entries
-    if not whichdays.issubset(day_set):
-        msg = "whichdays contains {}: should be a set of strings of weekday names"\
-                .format(whichdays.difference(day_set))
+    if not which_days.issubset(day_set):
+        msg = "which_days contains {}: should be a set of strings of weekday names"\
+                .format(which_days.difference(day_set))
         raise TypeError(msg)
 
     # calculate the number of full weeks within the period
     # and the corresponding num_workdays
     day_diff = (end_date - start_date).days
     full_weeks = int((day_diff - day_diff % 7) / 7)
-    num_workdays = full_weeks * len(whichdays)
+    num_workdays = full_weeks * len(which_days)
 
     # calculate the number of residual days after taking out full weeks
     start_day = start_date.weekday()
@@ -52,15 +55,15 @@ def workdays(start_date,
         else:
             return 0  # the input range is empty since it ends before it starts
 
-    # update the num_workdays with the number of whichdays
+    # update the num_workdays with the number of which_days
     # within the residual_days
-    num_workdays += len(residual.intersection(whichdays))
+    num_workdays += len(residual.intersection(which_days))
 
     # if there's a holiday calendar, knock off any holidays in the date range
-    # and in whichdays
+    # and in which_days
     if hol_cal is not None:
         hols = hol_cal.holidays(start_date, end_date)
-        hols_in_whichdays = [days[hol.weekday()] in whichdays for hol in hols]
+        hols_in_whichdays = [days[hol.weekday()] in which_days for hol in hols]
         num_workdays -= sum(hols_in_whichdays)
 
     return num_workdays

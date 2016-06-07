@@ -1,23 +1,22 @@
-from core.time_period.date_range import DateRange, YearType, DayType
-from core.time_period.load_shaped_date_range import LoadShapedDateRange,\
-                                                    NEVER_LSDR
-from core.time_period.load_shape import BASE, PEAK, OFFPEAK,\
-                                        WEEKDAY_OFFPEAK,\
-                                        WEEKEND_OFFPEAK,\
-                                        WEEKEND_PEAK,\
-                                        EFAS,\
-                                        WEEKEND,\
-                                        NIGHTTIME,\
-                                        HOURS,\
-                                        WEEKDAY_HOURS,\
-                                        NEVER_LS
-
 import datetime as dt
 import unittest
 
+from core.time_period.date_range import DateRange, YearType, DayType
+from core.time_period.load_shape import BASE, PEAK, OFFPEAK, \
+    WEEKDAY_OFFPEAK, \
+    WEEKEND_OFFPEAK, \
+    WEEKEND_PEAK, \
+    EFAS, \
+    WEEKEND, \
+    NIGHTTIME, \
+    HOURS, \
+    WEEKDAY_HOURS, \
+    NEVER_LS
+from core.time_period.load_shaped_date_range import LoadShapedDateRange, \
+    NEVER_LSDR
+
 
 class LoadShapedDateRangeTestCase(unittest.TestCase):
-
     def setUp(self):
         self.dec = DateRange('2012-M12')
         self.dec_base = LoadShapedDateRange('2012-M12', 'Base')
@@ -73,7 +72,7 @@ class LoadShapedDateRangeTestCase(unittest.TestCase):
         self.assertNotEqual(self.sat_offpeak, self.sat)
         self.assertNotEqual(self.sat, self.sat_base)
         self.assertNotEqual(self.sat_offpeak, self.sat_base)
-        self.assertNotEqual(self.sat_peak,  NEVER_LSDR)
+        self.assertNotEqual(self.sat_peak, NEVER_LSDR)
 
     def test_equivalent(self):
         # equivalance means the same delivery hours
@@ -176,9 +175,6 @@ class LoadShapedDateRangeTestCase(unittest.TestCase):
 
         winter = LoadShapedDateRange('2012')
         winter = winter.difference(LoadShapedDateRange('2012-SUM', 'Peak'))
-        self.assertTrue(winter[0].equivalent(LoadShapedDateRange('2012-Q1'))
-                        and
-                        winter[1].equivalent(LoadShapedDateRange('2012-SUM',
-                                                                 'Offpeak'))
-                        and
+        self.assertTrue(winter[0].equivalent(LoadShapedDateRange('2012-Q1')) and
+                        winter[1].equivalent(LoadShapedDateRange('2012-SUM', 'Offpeak')) and
                         winter[2].equivalent(LoadShapedDateRange('2012-Q4')))

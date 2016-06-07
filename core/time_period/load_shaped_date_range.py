@@ -1,3 +1,5 @@
+# TODO: improve doc strings
+
 from core.time_period.date_range import DateRange, NEVER_DR
 from core.time_period.load_shape import LoadShape, BASE
 
@@ -49,7 +51,7 @@ class LoadShapedDateRange(object):
 
     @property
     def duration(self):
-        '''returns the duration in days'''
+        """returns the duration in days"""
         weekdays, weekends = self.date_range.weekday_and_weekend_duration
         duration = weekdays * self.load_shape.weekday_load_factor
         duration += weekends * self.load_shape.weekend_load_factor
@@ -72,24 +74,23 @@ class LoadShapedDateRange(object):
                 return self.intersection(other).duration > 0
         return False
 
-    def equivalent(self, RHS):
-        '''tests whether two LoadShapedDateRange objects represent the same
-        set of hours.
-
-        Computationally expensive'''
-        intersection = self.intersection(RHS)
+    def equivalent(self, rhs):
+        """
+        Tests whether two LoadShapedDateRange objects represent the same set of hours. Computationally expensive
+        """
+        intersection = self.intersection(rhs)
         duration = self.duration
         if duration != intersection.duration:
             return False
         else:
-            return duration == RHS.duration
+            return duration == rhs.duration
 
-    def __contains__(self, LHS):
-        if isinstance(LHS, (dt.date, DateRange)):
-            if LHS in self.date_range:
+    def __contains__(self, lhs):
+        if isinstance(lhs, (dt.date, DateRange)):
+            if lhs in self.date_range:
                 return self.load_shape == BASE
-        elif LHS.date_range in self.date_range:
-                return LHS.load_shape in self.load_shape
+        elif lhs.date_range in self.date_range:
+                return lhs.load_shape in self.load_shape
         else:
             return False
 
@@ -118,13 +119,13 @@ class LoadShapedDateRange(object):
                 yield LoadShapedDateRange(DateRange(d, d), self.load_shape)
 
     def difference(self, other):
-        '''
+        """
         Returns a tripple of DateRange objects:
 
         1) The days in self which are before other (with self's loadshape)
         2) The days in both self and other, with load shape of self - other
         3) The days in self which are after other (with self's loadshape)
-        '''
+        """
         start, end = self.date_range.difference(other.date_range)
         mid = self.date_range.intersection(other.date_range)
         load_shape = self.load_shape.difference(other.load_shape)

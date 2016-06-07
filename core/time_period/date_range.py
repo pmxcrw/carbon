@@ -1,3 +1,5 @@
+# TODO: improve docstrings
+
 import datetime as dt
 import math
 import pandas as pd
@@ -11,11 +13,13 @@ class DateRange(object):
     """
 
     def __init__(self, start, end=None, range_type=None):
-        ''' Valid ways of generating a DateRange object are:
+        """
+        Valid ways of generating a DateRange object are:
             1) provide a valid start and end datetime.date object
             2) provide a valid datetime.date object and a non-default
                RangeType object
-            3) provide a string which can be parsed'''
+            3) provide a string which can be parsed
+        """
         if isinstance(start, dt.date):
             if isinstance(end, dt.date):
                 # this is case 1
@@ -29,7 +33,7 @@ class DateRange(object):
                     msg = "start={} and end={} both given ".format(start, end)
                     msg += "so range type cannot be defined: "
                     msg += "range_type={} given".format(range_type)
-                    raise ValueError(msg)
+                    raise TypeError(msg)
             elif range_type:
                 # this is case 2
                 range_type = range_type.lower().strip()
@@ -45,12 +49,12 @@ class DateRange(object):
             else:
                 msg = "if a start date is given then either an end date or "
                 msg += " range_type must be given"
-                raise ValueError(msg)
+                raise TypeError(msg)
         elif isinstance(start, str):
             if end or range_type:
                 msg = "if a string input provided, no other arguments "
                 msg += "can be given"
-                raise ValueError(msg)
+                raise TypeError(msg)
             else:
                 # this is case 3
                 start = start.lower().strip()
@@ -58,7 +62,7 @@ class DateRange(object):
                     try:
                         self.start, self.end = known_range_type.parse(start)
                         break
-                    except:
+                    except ValueError:
                         pass
                 else:
                     msg = "unable to parse {} into DateRange".format(start)
@@ -66,11 +70,13 @@ class DateRange(object):
 
     @property
     def range_type(self):
-        '''finds the range_type from self.start and self.end, assuming
-        it wasn't already given in the __init__'''
+        """
+        Finds the range_type from self.start and self.end, assuming
+        it wasn't already given in the __init__
+        """
         try:
             return self._cache_interval
-        except:
+        except AttributeError:
             for known_range_type in RangeType.__subclasses__():
                 if known_range_type.validate(self.start, self.end):
                     self._cache_interval = known_range_type
@@ -80,9 +86,11 @@ class DateRange(object):
                 return self._cache_interval
 
     def offset(self, shift=1):
-        '''returns a new DateRange where start and end have been shifted.
+        """
+        Returns a new DateRange where start and end have been shifted.
         The RangeType object determines the shift size; e.g. a DateRange
-        that has a MonthType will shift by 'shift' number of months'''
+        that has a MonthType will shift by 'shift' number of months
+        """
         start, end = self.range_type.shifted(self.start, shift)
         return DateRange(start, end)
 
@@ -93,14 +101,14 @@ class DateRange(object):
         return self.range_type.str(self.start, self.end)
 
     def __len__(self):
-        '''Returns the number of days in self'''
+        """Returns the number of days in self"""
         if self.start <= self.end:
             return (self.end - self.start).days + 1
         return 0
 
     def __contains__(self, lhs):
         if isinstance(lhs, dt.date):
-            return self.start <= lhs and lhs <= self.end
+            return self.start <= lhs <= self.end
         elif isinstance(lhs, DateRange):
             return self.start <= lhs.start and lhs.end <= self.end
 
@@ -132,11 +140,11 @@ class DateRange(object):
         return self.start <= other.end and other.start <= self.end
 
     def difference(self, other):
-        '''
+        """
         Returns a pair of DateRange objects. The first is all days in
         self which are before other. The second is all days in self
         which are after other
-        '''
+        """
         diff = []
         if self.start < other.start:
             diff.append(DateRange(self.start, other.start - dt.timedelta(1)))
@@ -150,7 +158,7 @@ class DateRange(object):
 
     @property
     def weekday_and_weekend_duration(self):
-        '''Returns the number of weekdays and weekend days'''
+        """Returns the number of weekdays and weekend days"""
         weekend_count = len(self)
         if weekend_count:
             weekday_count = workdays(self.start, self.end)
@@ -162,7 +170,7 @@ class DateRange(object):
     def split_by_range_type(self, range_type):
         try:
             start_range = range_type.date_range(self.start)
-        except:
+        except ValueError:
             # only reason for excepting is if the range_type can't contain
             # the date self.start - which is only the case for SummerType
             # and WinterType. In this case we want to switch types.
@@ -174,7 +182,7 @@ class DateRange(object):
                 raise ValueError("range_type is unknown")
         try:
             end_range = range_type.date_range(self.end)
-        except:
+        except ValueError:
             # only reason for excepting is if the range_type can't contain
             # the date self.start - which is only the case for SummerType
             # and WinterType. In this case we want to switch types.
@@ -249,6 +257,18 @@ class NeverType(RangeType):
     def str(start, end):
         return "Never"
 
+    @staticmethod
+    def bound(date):
+        raise NotImplementedError
+
+    @staticmethod
+    def date_range(start):
+        raise NotImplementedError
+
+    @staticmethod
+    def shifted(date_range, offset):
+        raise NotImplementedError
+
 
 class AlwaysType(RangeType):
 
@@ -270,6 +290,18 @@ class AlwaysType(RangeType):
     @staticmethod
     def str(start, end):
         return "Always"
+
+    @staticmethod
+    def bound(date):
+        raise NotImplementedError
+
+    @staticmethod
+    def date_range(start):
+        raise NotImplementedError
+
+    @staticmethod
+    def shifted(date_range, offset):
+        raise NotImplementedError
 
 
 class DayType(RangeType):
@@ -342,11 +374,11 @@ class WeekType(RangeType):
     @staticmethod
     def _roll(year, week):
         while week < 0:
-            year = year - 1
+            year -= 1
             week += WeekType._max_weeks_in_year(year)
         while week > WeekType._max_weeks_in_year(year):
             week -= WeekType._max_weeks_in_year(year)
-            year = year + 1
+            year += 1
         return year, week
 
     @staticmethod
@@ -378,7 +410,7 @@ class WeekType(RangeType):
         if intervening_week:
             return WeekType._roll(year, intervening_week)
         else:
-            year = year - 1
+            year -= 1
             week = WeekType._max_weeks_in_year(year)
             return year, week
 
@@ -441,8 +473,8 @@ class MonthType(RangeType):
         y = date_range.year
         m = date_range.month + shift
         year_shift = math.ceil(m / 12) - 1
-        y = y + year_shift
-        m = m - year_shift * 12
+        y += year_shift
+        m -= year_shift * 12
         return MonthType.bound(dt.date(y, m, 1))
 
     @staticmethod
@@ -490,8 +522,8 @@ class QuarterType(RangeType):
         y = date_range.year
         q = math.ceil(date_range.month / 3) + shift
         year_shift = math.ceil(q / 4) - 1
-        y = y + year_shift
-        q = q - year_shift * 4
+        y += year_shift
+        q -= year_shift * 4
         return QuarterType.bound(dt.date(y, 3 * q, 1))
 
     @staticmethod
@@ -708,8 +740,10 @@ class GasYearType(RangeType):
 
 # helper function for use in other modules
 def date_ranges(dates):
-    '''Builds a sequence of DateRanges that spans the
-    input (sorted) list of dates'''
+    """
+    Builds a sequence of DateRanges that spans the
+    input (sorted) list of dates
+    """
     return [DateRange(start, end - dt.timedelta(1))
             for start, end in zip(dates[:-1], dates[1:])]
 

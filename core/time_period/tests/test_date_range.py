@@ -1,10 +1,11 @@
+import datetime as dt
+import unittest
+
+from pandas.util.testing import assertRaises
+
 from core.time_period.date_range import DateRange, RangeType, NeverType,\
     AlwaysType, DayType, WeekType, MonthType, QuarterType, YearType, GasYearType,\
     SummerType, WinterType
-
-import unittest
-import datetime as dt
-from pandas.util.testing import assertRaises
 
 
 class DateRangeGenericTest(unittest.TestCase):
@@ -25,8 +26,9 @@ class DateRangeGenericTest(unittest.TestCase):
         self.assertEqual(self.test_DR1.end, self.test_end)
         self.assertEqual(self.test_DR1.range_type, self.test_range_type)
         with self.assertRaises(ValueError):
-            DateRange(self.test_start, "R")
             DateRange(self.test_string)
+        with self.assertRaises(TypeError):
+            DateRange(self.test_start, "R")
 
     def test_offset(self):
         with self.assertRaises(NotImplementedError):
@@ -313,8 +315,9 @@ class DateRangeMonthTest(unittest.TestCase):
         self.assertEqual(c.end, dt.date(2015, 2, 28))
         self.assertEqual(c.range_type, MonthType)
         with self.assertRaises(ValueError):
-            DateRange(dt.date(2016, 5, 1), dt.date(2016, 5, 31), "month")
             DateRange('2016-month5')
+        with self.assertRaises(TypeError):
+            DateRange(dt.date(2016, 5, 1), dt.date(2016, 5, 31), "month")
 
     def test_offset(self):
         a = DateRange('M5-2016')
@@ -452,4 +455,3 @@ class DateRangeGasYearTest(unittest.TestCase):
 
     def test_str(self):
         self.assertEqual(str(DateRange('2016-GY')), "GY-2016")
-
