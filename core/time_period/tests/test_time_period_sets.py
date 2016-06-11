@@ -193,14 +193,14 @@ class TestTimePeriodSet(unittest.TestCase):
             TimePeriodSet({}).partition
 
     def test_DateRange_partition(self):
-        expected = set([TimePeriodSet({DateRange(dt.date(2016, 1, 1), dt.date(2016, 1, 30))}),
+        expected = [TimePeriodSet({DateRange(dt.date(2016, 1, 1), dt.date(2016, 1, 30))}),
                     TimePeriodSet({DateRange(dt.date(2016, 1, 31), dt.date(2016, 1, 31))}),
                     TimePeriodSet({DateRange(dt.date(2016, 2, 1), dt.date(2016, 2, 29))}),
                     TimePeriodSet({DateRange(dt.date(2016, 10, 1), dt.date(2016, 12, 31)),
                                   DateRange(dt.date(2016, 3, 1), dt.date(2016, 3, 31))}),
                     TimePeriodSet({DateRange(dt.date(2016, 4, 1), dt.date(2016, 6, 30))}),
                     TimePeriodSet({DateRange(dt.date(2016, 7, 1), dt.date(2016, 9, 30))}),
-                    TimePeriodSet({DateRange(dt.date(2018, 1, 1), dt.date(2018, 12, 31))})])
+                    TimePeriodSet({DateRange(dt.date(2018, 1, 1), dt.date(2018, 12, 31))})]
 
         self.assertEqual(expected, self.drs.partition)
 

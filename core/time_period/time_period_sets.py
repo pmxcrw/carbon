@@ -9,13 +9,12 @@ import datetime as dt
 import functools
 
 
-class TimePeriodSet(frozenset):
+class TimePeriodSet(set):
 
-    def __new__(cls, collection, time_period_type=None, default_load_shape=None):
+    def __init__(self, collection, time_period_type=None, default_load_shape=None):
         if len(collection) == 0:
-            time_period_set = super(TimePeriodSet, cls).__new__(collection)
-            time_period_set.default_load_shape = None
-            time_period_set.time_period_type = None
+            self.default_load_shape = None
+            self.time_period_type = None
             super(TimePeriodSet, self).__init__(collection)
         elif time_period_type is None:
             for candidate_type in TimePeriodType.__subclasses__():
@@ -240,7 +239,7 @@ class DateRangeType(TimePeriodType):
                 else:
                     equivalence_classes[intersecting_drs].append(atomic_date_range)
         # now build the partition from the values in the equivalence_class dict
-        return set(DateRangeSet(atoms) for atoms in equivalence_classes.values())
+        return [TimePeriodSet(atoms, DateRangeType) for atoms in equivalence_classes.values()]
 
 
 class LoadShapedDateRangeType(TimePeriodType):
