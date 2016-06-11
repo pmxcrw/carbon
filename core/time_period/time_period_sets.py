@@ -9,13 +9,23 @@ import datetime as dt
 import functools
 
 
-class TimePeriodSet(set):
+class TimePeriodSet(frozenset):
 
-    def __init__(self, collection, time_period_type=None, default_load_shape=None):
-        self.default_load_shape = default_load_shape
-        if time_period_type is None:
+    def __new__(cls, collection, time_period_type=None, default_load_shape=None):
+        if len(collection) == 0:
+            time_period_set = super(TimePeriodSet, cls).__new__(collection)
+            time_period_set.default_load_shape = None
+            time_period_set.time_period_type = None
+            super(TimePeriodSet, self).__init__(collection)
+        elif time_period_type is None:
             for candidate_type in TimePeriodType.__subclasses__():
                 if all(type(item) == candidate_type.time_period_class for item in collection):
+                    if candidate_type == LoadShapedDateRangeType:
+                        load_shapes = set(lsdr.load_shape for lsdr in collection)
+                        if len(load_shapes) == 1:
+                            self.default_load_shape = load_shapes.pop()
+                    else:
+                        self.default_load_shape = None
                     self.time_period_type = candidate_type
                     super(TimePeriodSet, self).__init__(collection)
                     break
@@ -24,6 +34,9 @@ class TimePeriodSet(set):
                 msg += " known time period"
                 raise ValueError(msg)
         else:
+            if isinstance(default_load_shape, str):
+                default_load_shape = LoadShape(default_load_shape)
+            self.default_load_shape = default_load_shape
             if isinstance(time_period_type, str):
                 time_period_type = time_period_type.lower().strip()
                 for candidate_type in TimePeriodType.__subclasses__():
@@ -82,16 +95,21 @@ class TimePeriodSet(set):
 
     def intersection(self, other):
         if type(other) == self.time_period_type.time_period_class:
-            collection = (item.intersection(other) for item in self if item.intersects(other))
+            collection = [item.intersection(other) for item in self if item.intersects(other)]
             return TimePeriodSet(collection, self.time_period_type, self.default_load_shape)
         elif type(other) == TimePeriodSet and other.time_period_type == self.time_period_type:
-            collection = {item.intersection(other_item) for item in self for other_item in other
-                                  if item.intersects(other_item)}
+            collection = [item.intersection(other_item) for item in self for other_item in other
+                                  if item.intersects(other_item)]
             return TimePeriodSet(collection, self.time_period_type, self.default_load_shape)
+        else:
+            raise TypeError("intersection only implemented for homogeneous time period types")
 
     @property
     def partition(self):
-        return self.time_period_type.partition(self)
+        if self.time_period_type:
+            return self.time_period_type.partition(self)
+        else:
+            raise TypeError("partition not defined for empty TimePeriodSet")
 
 
 class TimePeriodType(object):
@@ -224,6 +242,7 @@ class DateRangeType(TimePeriodType):
         # now build the partition from the values in the equivalence_class dict
         return set(DateRangeSet(atoms) for atoms in equivalence_classes.values())
 
+
 class LoadShapedDateRangeType(TimePeriodType):
 
     aliases = {'load_shaped_date_range', 'LoadShapedDateRange', 'lsdr', 'load shaped date range'}
@@ -238,7 +257,7 @@ class LoadShapedDateRangeType(TimePeriodType):
             if isinstance(item, str):
                 item = LoadShapedDateRange(item, default_load_shape)
             elif isinstance(item, dt.date):
-                item = LoadShapedDateRange(DateRange(dt.date, dt.date), default_load_shape)
+                item = LoadShapedDateRange(DateRange(item, item), default_load_shape)
             elif isinstance(item, DateRange):
                 item = LoadShapedDateRange(item, default_load_shape)
             if isinstance(item, LoadShapedDateRange):
