@@ -1,7 +1,7 @@
 import datetime as dt
 import unittest
 
-from core.time_period.date_range import DateRange, YearType, DayType
+from core.time_period.date_range import DateRange, _YearType, _DayType
 from core.time_period.load_shape import BASE, PEAK, OFFPEAK, \
     WEEKDAY_OFFPEAK, \
     WEEKEND_OFFPEAK, \
@@ -146,7 +146,7 @@ class LoadShapedDateRangeTestCase(unittest.TestCase):
         ranges = [DateRange(dt.date(2011, 11, 17), dt.date(2011, 12, 31)),
                   DateRange('2012'),
                   DateRange(dt.date(2013, 1, 1), dt.date(2013, 3, 4))]
-        self.assertEqual(lsdr.split_by_range_type(YearType),
+        self.assertEqual(lsdr.split_by_range_type(_YearType),
                          [LoadShapedDateRange(x, PEAK) for x in ranges])
 
     def test_iter(self):
@@ -156,7 +156,7 @@ class LoadShapedDateRangeTestCase(unittest.TestCase):
         dr = [DateRange(dt.date(2011, 11, 17), range_type='d')]
         dr += [DateRange(dt.date(2011, 11, 18), dt.date(2011, 11, 18))]
         drl = DateRange(dt.date(2011, 11, 21), dt.date(2011, 11, 23))
-        dr += drl.split_by_range_type(DayType)
+        dr += drl.split_by_range_type(_DayType)
         self.assertEqual([l for l in ls],
                          [LoadShapedDateRange(i, PEAK) for i in dr])
 

@@ -3,9 +3,9 @@ import unittest
 
 from pandas.util.testing import assertRaises
 
-from core.time_period.date_range import DateRange, RangeType, NeverType,\
-    AlwaysType, DayType, WeekType, MonthType, QuarterType, YearType, GasYearType,\
-    SummerType, WinterType
+from core.time_period.date_range import DateRange, _RangeType, _NeverType,\
+    _AlwaysType, _DayType, _WeekType, _MonthType, _QuarterType, _YearType, _GasYearType,\
+    _SummerType, _WinterType
 
 
 class DateRangeGenericTest(unittest.TestCase):
@@ -13,7 +13,7 @@ class DateRangeGenericTest(unittest.TestCase):
     def setUp(self):
         self.test_start = dt.date(2012, 9, 13)
         self.test_end = dt.date(2016, 1, 3)
-        self.test_range_type = RangeType
+        self.test_range_type = _RangeType
         self.test_string = "2012-9-13 to 2016-1-3"
         self.test_DR1 = DateRange(self.test_start, self.test_end)
         self.repr_msg = "DateRange(start={}, end={})".format(self.test_start,
@@ -119,25 +119,25 @@ class DateRangeGenericTest(unittest.TestCase):
                   DateRange('2002-WIN'),
                   DateRange('2003-SUM'),
                   DateRange('2003-Q4')]
-        self.assertEqual(output, a.split_by_range_type(SummerType))
+        self.assertEqual(output, a.split_by_range_type(_SummerType))
         output = [DateRange(dt.date(2000, 1, 1), dt.date(2000, 9, 30)),
                   DateRange('2000-GY'),
                   DateRange('GY-2001'),
                   DateRange('GY-2002'),
                   DateRange('2003-Q4')]
-        self.assertEqual(output, a.split_by_range_type(GasYearType))
+        self.assertEqual(output, a.split_by_range_type(_GasYearType))
         output = [DateRange('2000'),
                   DateRange('2001'),
                   DateRange('2002'),
                   DateRange('2003')]
-        self.assertEqual(output, a.split_by_range_type(YearType))
+        self.assertEqual(output, a.split_by_range_type(_YearType))
         b = DateRange('2016-M1')
         output = [DateRange(dt.date(2016, 1, 1), dt.date(2016, 1, 3)),
                   DateRange('2016-W1'),
                   DateRange('2016-W2'),
                   DateRange('2016-W3'),
                   DateRange('2016-W4')]
-        self.assertEqual(output, b.split_by_range_type(WeekType))
+        self.assertEqual(output, b.split_by_range_type(_WeekType))
         c = DateRange('2016-W4')
         output = [DateRange('2016-01-25'),
                   DateRange('2016-01-26'),
@@ -146,7 +146,7 @@ class DateRangeGenericTest(unittest.TestCase):
                   DateRange('2016-01-29'),
                   DateRange('2016-01-30'),
                   DateRange('2016-01-31')]
-        self.assertEqual(output, c.split_by_range_type(DayType))
+        self.assertEqual(output, c.split_by_range_type(_DayType))
 
     def test_split_by_month(self):
         # doesn't need repeating for other strategy objects
@@ -175,10 +175,10 @@ class DateRangeNeverTest(unittest.TestCase):
         end = dt.date.min
         self.assertEqual(a.start, start)
         self.assertEqual(a.end, end)
-        self.assertEqual(a.range_type, NeverType)
+        self.assertEqual(a.range_type, _NeverType)
         self.assertEqual(c.start, start)
         self.assertEqual(c.end, end)
-        self.assertEqual(c.range_type, NeverType)
+        self.assertEqual(c.range_type, _NeverType)
 
     def test_offset(self):
         with self.assertRaises(NotImplementedError):
@@ -198,10 +198,10 @@ class DateRangeAlwaysTest(unittest.TestCase):
         c = DateRange('always')
         self.assertEqual(a.start, start)
         self.assertEqual(a.end, end)
-        self.assertEqual(a.range_type, AlwaysType)
+        self.assertEqual(a.range_type, _AlwaysType)
         self.assertEqual(c.start, start)
         self.assertEqual(c.end, end)
-        self.assertEqual(c.range_type, AlwaysType)
+        self.assertEqual(c.range_type, _AlwaysType)
 
     def test_offset(self):
         with self.assertRaises(NotImplementedError):
@@ -220,13 +220,13 @@ class DateRangeDayTest(unittest.TestCase):
         c = DateRange('2015-10-1')
         self.assertEqual(a.start, dt.date(2016, 10, 1))
         self.assertEqual(a.end, dt.date(2016, 10, 1))
-        self.assertEqual(a.range_type, DayType)
+        self.assertEqual(a.range_type, _DayType)
         self.assertEqual(b.start, dt.date(2016, 1, 1))
         self.assertEqual(b.end, dt.date(2016, 1, 1))
-        self.assertEqual(b.range_type, DayType)
+        self.assertEqual(b.range_type, _DayType)
         self.assertEqual(c.start, dt.date(2015, 10, 1))
         self.assertEqual(c.end, dt.date(2015, 10, 1))
-        self.assertEqual(c.range_type, DayType)
+        self.assertEqual(c.range_type, _DayType)
 
     def test_offset(self):
         a = DateRange('2015-10-1')
@@ -247,34 +247,34 @@ class DateRangeWeekendTest(unittest.TestCase):
         c = DateRange('2015-W1')
         self.assertEqual(a.start, start1)
         self.assertEqual(a.end, end1)
-        self.assertEqual(a.range_type, WeekType)
+        self.assertEqual(a.range_type, _WeekType)
         self.assertEqual(b.start, start1)
         self.assertEqual(b.end, end1)
-        self.assertEqual(b.range_type, WeekType)
+        self.assertEqual(b.range_type, _WeekType)
         self.assertEqual(c.start, start1)
         self.assertEqual(c.end, end1)
-        self.assertEqual(c.range_type, WeekType)
+        self.assertEqual(c.range_type, _WeekType)
 
         start1 = dt.date(2015, 4, 27)
         end1 = dt.date(2015, 5, 3)
         c = DateRange('2015-W18')
         self.assertEqual(c.start, start1)
         self.assertEqual(c.end, end1)
-        self.assertEqual(c.range_type, WeekType)
+        self.assertEqual(c.range_type, _WeekType)
 
         start1 = dt.date(2015, 12, 28)
         end1 = dt.date(2016, 1, 3)
         c = DateRange('2015-W53')
         self.assertEqual(c.start, start1)
         self.assertEqual(c.end, end1)
-        self.assertEqual(c.range_type, WeekType)
+        self.assertEqual(c.range_type, _WeekType)
 
         start1 = dt.date(2016, 12, 26)
         end1 = dt.date(2017, 1, 1)
         c = DateRange('2016-W52')
         self.assertEqual(c.start, start1)
         self.assertEqual(c.end, end1)
-        self.assertEqual(c.range_type, WeekType)
+        self.assertEqual(c.range_type, _WeekType)
 
     def test_offset(self):
         a = DateRange('W52-2015')
@@ -307,13 +307,13 @@ class DateRangeMonthTest(unittest.TestCase):
         c = DateRange('M2-2015')
         self.assertEqual(a.start, dt.date(2016, 5, 1))
         self.assertEqual(a.end, dt.date(2016, 5, 31))
-        self.assertEqual(a.range_type, MonthType)
+        self.assertEqual(a.range_type, _MonthType)
         self.assertEqual(b.start, dt.date(2016, 2, 1))
         self.assertEqual(b.end, dt.date(2016, 2, 29))
-        self.assertEqual(b.range_type, MonthType)
+        self.assertEqual(b.range_type, _MonthType)
         self.assertEqual(c.start, dt.date(2015, 2, 1))
         self.assertEqual(c.end, dt.date(2015, 2, 28))
-        self.assertEqual(c.range_type, MonthType)
+        self.assertEqual(c.range_type, _MonthType)
         with self.assertRaises(ValueError):
             DateRange('2016-month5')
         with self.assertRaises(TypeError):
@@ -336,13 +336,13 @@ class DateRangeQuarterTest(unittest.TestCase):
         c = DateRange('Q2-2015')
         self.assertEqual(a.start, dt.date(2016, 10, 1))
         self.assertEqual(a.end, dt.date(2016, 12, 31))
-        self.assertEqual(a.range_type, QuarterType)
+        self.assertEqual(a.range_type, _QuarterType)
         self.assertEqual(b.start, dt.date(2016, 1, 1))
         self.assertEqual(b.end, dt.date(2016, 3, 31))
-        self.assertEqual(b.range_type, QuarterType)
+        self.assertEqual(b.range_type, _QuarterType)
         self.assertEqual(c.start, dt.date(2015, 4, 1))
         self.assertEqual(c.end, dt.date(2015, 6, 30))
-        self.assertEqual(c.range_type, QuarterType)
+        self.assertEqual(c.range_type, _QuarterType)
 
     def test_offset(self):
         a = DateRange('Q3-2016')
@@ -361,13 +361,13 @@ class DateRangeSummerTest(unittest.TestCase):
         c = DateRange('SUM-2015')
         self.assertEqual(a.start, dt.date(2016, 4, 1))
         self.assertEqual(a.end, dt.date(2016, 9, 30))
-        self.assertEqual(a.range_type, SummerType)
+        self.assertEqual(a.range_type, _SummerType)
         self.assertEqual(b.start, dt.date(2016, 4, 1))
         self.assertEqual(b.end, dt.date(2016, 9, 30))
-        self.assertEqual(b.range_type, SummerType)
+        self.assertEqual(b.range_type, _SummerType)
         self.assertEqual(c.start, dt.date(2015, 4, 1))
         self.assertEqual(c.end, dt.date(2015, 9, 30))
-        self.assertEqual(c.range_type, SummerType)
+        self.assertEqual(c.range_type, _SummerType)
         with assertRaises(ValueError):
             DateRange(dt.date(2016, 2, 20), range_type="SUM")
 
@@ -388,13 +388,13 @@ class DateRangeWinterTest(unittest.TestCase):
         c = DateRange('WIN-2015')
         self.assertEqual(a.start, dt.date(2016, 10, 1))
         self.assertEqual(a.end, dt.date(2017, 3, 31))
-        self.assertEqual(a.range_type, WinterType)
+        self.assertEqual(a.range_type, _WinterType)
         self.assertEqual(b.start, dt.date(2016, 10, 1))
         self.assertEqual(b.end, dt.date(2017, 3, 31))
-        self.assertEqual(b.range_type, WinterType)
+        self.assertEqual(b.range_type, _WinterType)
         self.assertEqual(c.start, dt.date(2015, 10, 1))
         self.assertEqual(c.end, dt.date(2016, 3, 31))
-        self.assertEqual(c.range_type, WinterType)
+        self.assertEqual(c.range_type, _WinterType)
         with assertRaises(ValueError):
             DateRange(dt.date(2016, 5, 20), range_type="WIN")
 
@@ -415,13 +415,13 @@ class DateRangeYearTest(unittest.TestCase):
         c = DateRange('2015')
         self.assertEqual(a.start, dt.date(2016, 1, 1))
         self.assertEqual(a.end, dt.date(2016, 12, 31))
-        self.assertEqual(a.range_type, YearType)
+        self.assertEqual(a.range_type, _YearType)
         self.assertEqual(b.start, dt.date(2016, 1, 1))
         self.assertEqual(b.end, dt.date(2016, 12, 31))
-        self.assertEqual(b.range_type, YearType)
+        self.assertEqual(b.range_type, _YearType)
         self.assertEqual(c.start, dt.date(2015, 1, 1))
         self.assertEqual(c.end, dt.date(2015, 12, 31))
-        self.assertEqual(c.range_type, YearType)
+        self.assertEqual(c.range_type, _YearType)
 
     def test_offset(self):
         a = DateRange('2016')
@@ -440,13 +440,13 @@ class DateRangeGasYearTest(unittest.TestCase):
         c = DateRange('2015-GY')
         self.assertEqual(a.start, dt.date(2016, 10, 1))
         self.assertEqual(a.end, dt.date(2017, 9, 30))
-        self.assertEqual(a.range_type, GasYearType)
+        self.assertEqual(a.range_type, _GasYearType)
         self.assertEqual(b.start, dt.date(2015, 10, 1))
         self.assertEqual(b.end, dt.date(2016, 9, 30))
-        self.assertEqual(b.range_type, GasYearType)
+        self.assertEqual(b.range_type, _GasYearType)
         self.assertEqual(c.start, dt.date(2015, 10, 1))
         self.assertEqual(c.end, dt.date(2016, 9, 30))
-        self.assertEqual(c.range_type, GasYearType)
+        self.assertEqual(c.range_type, _GasYearType)
 
     def test_offset(self):
         a = DateRange('GY-2016')

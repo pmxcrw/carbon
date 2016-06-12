@@ -3,7 +3,7 @@
 import datetime as dt
 import math
 import pandas as pd
-from core.time_period.date_utilities import workdays, START_OF_WORLD, END_OF_WORLD
+from core.time_period.time_utilities import workdays, START_OF_WORLD, END_OF_WORLD
 
 
 class DateRange(object):
@@ -37,7 +37,7 @@ class DateRange(object):
             elif range_type:
                 # this is case 2
                 range_type = range_type.lower().strip()
-                for known_range_type in RangeType.__subclasses__():
+                for known_range_type in _RangeType.__subclasses__():
                     if range_type in known_range_type.aliases:
                         self.start, self.end = known_range_type.bound(start)
                         self._cache_interval = known_range_type
@@ -58,7 +58,7 @@ class DateRange(object):
             else:
                 # this is case 3
                 start = start.lower().strip()
-                for known_range_type in RangeType.__subclasses__():
+                for known_range_type in _RangeType.__subclasses__():
                     try:
                         self.start, self.end = known_range_type.parse(start)
                         break
@@ -77,12 +77,12 @@ class DateRange(object):
         try:
             return self._cache_interval
         except AttributeError:
-            for known_range_type in RangeType.__subclasses__():
+            for known_range_type in _RangeType.__subclasses__():
                 if known_range_type.validate(self.start, self.end):
                     self._cache_interval = known_range_type
                     return self._cache_interval
             else:
-                self._cache_interval = RangeType
+                self._cache_interval = _RangeType
                 return self._cache_interval
 
     def offset(self, shift=1):
@@ -174,10 +174,10 @@ class DateRange(object):
             # only reason for excepting is if the range_type can't contain
             # the date self.start - which is only the case for SummerType
             # and WinterType. In this case we want to switch types.
-            if range_type == SummerType:
-                start_range = WinterType.date_range(self.start)
-            elif range_type == WinterType:
-                start_range = SummerType.date_range(self.start)
+            if range_type == _SummerType:
+                start_range = _WinterType.date_range(self.start)
+            elif range_type == _WinterType:
+                start_range = _SummerType.date_range(self.start)
             else:
                 raise ValueError("range_type is unknown")
         try:
@@ -186,10 +186,10 @@ class DateRange(object):
             # only reason for excepting is if the range_type can't contain
             # the date self.start - which is only the case for SummerType
             # and WinterType. In this case we want to switch types.
-            if range_type == SummerType:
-                end_range = WinterType.date_range(self.end)
-            elif range_type == WinterType:
-                end_range = SummerType.date_range(self.end)
+            if range_type == _SummerType:
+                end_range = _WinterType.date_range(self.end)
+            elif range_type == _WinterType:
+                end_range = _SummerType.date_range(self.end)
             else:
                 raise ValueError("range_type is unknown")
         output = [self.intersection(start_range)]
@@ -202,14 +202,14 @@ class DateRange(object):
 
     @property
     def split_by_quarter(self):
-        return self.split_by_range_type(QuarterType)
+        return self.split_by_range_type(_QuarterType)
 
     @property
     def split_by_month(self):
-        return self.split_by_range_type(MonthType)
+        return self.split_by_range_type(_MonthType)
 
 
-class RangeType(object):
+class _RangeType(object):
 
     @staticmethod
     def validate(start, end):
@@ -236,7 +236,7 @@ class RangeType(object):
         raise NotImplementedError
 
 
-class NeverType(RangeType):
+class _NeverType(_RangeType):
 
     aliases = {"never", "nat", "na"}
 
@@ -246,11 +246,11 @@ class NeverType(RangeType):
 
     @staticmethod
     def parse(string):
-        if string in NeverType.aliases:
+        if string in _NeverType.aliases:
             return END_OF_WORLD, START_OF_WORLD
         else:
             msg = "cannot parse '{}' as NeverType: Expected one of {}"\
-                    .format(string, NeverType.aliases)
+                    .format(string, _NeverType.aliases)
             raise ValueError(msg)
 
     @staticmethod
@@ -270,7 +270,7 @@ class NeverType(RangeType):
         raise NotImplementedError
 
 
-class AlwaysType(RangeType):
+class _AlwaysType(_RangeType):
 
     aliases = {"always", "forever"}
 
@@ -280,11 +280,11 @@ class AlwaysType(RangeType):
 
     @staticmethod
     def parse(string):
-        if string in AlwaysType.aliases:
+        if string in _AlwaysType.aliases:
             return START_OF_WORLD, END_OF_WORLD
         else:
             msg = "cannot parse '{}' as AlwaysType: Expected one of {}"\
-                    .format(string, NeverType.aliases)
+                    .format(string, _NeverType.aliases)
             raise ValueError(msg)
 
     @staticmethod
@@ -304,7 +304,7 @@ class AlwaysType(RangeType):
         raise NotImplementedError
 
 
-class DayType(RangeType):
+class _DayType(_RangeType):
 
     aliases = {"day", "d"}
 
@@ -324,24 +324,24 @@ class DayType(RangeType):
                 date = pd.Timestamp(date).date()
             except:
                 raise ValueError(except_msg)
-            return DayType.bound(date)
+            return _DayType.bound(date)
         raise ValueError(except_msg)
 
     @staticmethod
     def date_range(date):
-        start, end = DayType.bound(date)
+        start, end = _DayType.bound(date)
         return DateRange(start, end)
 
     @staticmethod
     def shifted(date_range, shift=1):
-        return DayType.bound(date_range + dt.timedelta(shift))
+        return _DayType.bound(date_range + dt.timedelta(shift))
 
     @staticmethod
     def str(start, end):
         return "{}".format(start)
 
 
-class WeekType(RangeType):
+class _WeekType(_RangeType):
 
     aliases = {"week", "wk", "w"}
 
@@ -366,18 +366,18 @@ class WeekType(RangeType):
                 week = int(date[1][1:])
             else:
                 raise ValueError(exception_msg)
-            year, week = WeekType._roll(year, week)
+            year, week = _WeekType._roll(year, week)
         except:
             raise ValueError(exception_msg)
-        return WeekType._calc_start_and_end(year, week)
+        return _WeekType._calc_start_and_end(year, week)
 
     @staticmethod
     def _roll(year, week):
         while week < 0:
             year -= 1
-            week += WeekType._max_weeks_in_year(year)
-        while week > WeekType._max_weeks_in_year(year):
-            week -= WeekType._max_weeks_in_year(year)
+            week += _WeekType._max_weeks_in_year(year)
+        while week > _WeekType._max_weeks_in_year(year):
+            week -= _WeekType._max_weeks_in_year(year)
             year += 1
         return year, week
 
@@ -393,8 +393,8 @@ class WeekType(RangeType):
 
     @staticmethod
     def _max_weeks_in_year(year):
-        _, end_week53 = WeekType._calc_start_and_end(year, 53)
-        start_week1, _ = WeekType._calc_start_and_end(year + 1, 1)
+        _, end_week53 = _WeekType._calc_start_and_end(year, 53)
+        start_week1, _ = _WeekType._calc_start_and_end(year + 1, 1)
         if end_week53 < start_week1:
             return 53
         else:
@@ -408,32 +408,32 @@ class WeekType(RangeType):
         intervening_days = (date - start_wk1).days
         intervening_week = intervening_days // 7 + 1
         if intervening_week:
-            return WeekType._roll(year, intervening_week)
+            return _WeekType._roll(year, intervening_week)
         else:
             year -= 1
-            week = WeekType._max_weeks_in_year(year)
+            week = _WeekType._max_weeks_in_year(year)
             return year, week
 
     @staticmethod
     def date_range(date):
-        start, end = WeekType.bound(date)
+        start, end = _WeekType.bound(date)
         return DateRange(start, end)
 
     @staticmethod
     def shifted(date_range, shift=1):
-        year, week = WeekType._get_year_and_week(date_range)
+        year, week = _WeekType._get_year_and_week(date_range)
         week += shift
-        year, week = WeekType._roll(year, week)
-        start, end = WeekType._calc_start_and_end(year, week)
+        year, week = _WeekType._roll(year, week)
+        start, end = _WeekType._calc_start_and_end(year, week)
         return start, end
 
     @staticmethod
     def str(start, end):
-        year, week = WeekType._get_year_and_week(start)
+        year, week = _WeekType._get_year_and_week(start)
         return "{}-W{}".format(year, week)
 
 
-class MonthType(RangeType):
+class _MonthType(_RangeType):
 
     aliases = {"month", "mth", "m"}
 
@@ -465,7 +465,7 @@ class MonthType(RangeType):
 
     @staticmethod
     def date_range(date):
-        start, end = MonthType.bound(date)
+        start, end = _MonthType.bound(date)
         return DateRange(start, end)
 
     @staticmethod
@@ -475,14 +475,14 @@ class MonthType(RangeType):
         year_shift = math.ceil(m / 12) - 1
         y += year_shift
         m -= year_shift * 12
-        return MonthType.bound(dt.date(y, m, 1))
+        return _MonthType.bound(dt.date(y, m, 1))
 
     @staticmethod
     def str(start, end):
         return "{}-M{}".format(start.year, start.month)
 
 
-class QuarterType(RangeType):
+class _QuarterType(_RangeType):
 
     aliases = {"quarter", "qtr", "q"}
 
@@ -514,7 +514,7 @@ class QuarterType(RangeType):
 
     @staticmethod
     def date_range(date):
-        start, end = QuarterType.bound(date)
+        start, end = _QuarterType.bound(date)
         return DateRange(start, end)
 
     @staticmethod
@@ -524,14 +524,14 @@ class QuarterType(RangeType):
         year_shift = math.ceil(q / 4) - 1
         y += year_shift
         q -= year_shift * 4
-        return QuarterType.bound(dt.date(y, 3 * q, 1))
+        return _QuarterType.bound(dt.date(y, 3 * q, 1))
 
     @staticmethod
     def str(start, end):
         return "{}-Q{}".format(start.year, math.ceil(start.month / 3))
 
 
-class SummerType(RangeType):
+class _SummerType(_RangeType):
 
     aliases = {"summer", "sum"}
 
@@ -565,7 +565,7 @@ class SummerType(RangeType):
     @staticmethod
     def date_range(date):
         try:
-            start, end = SummerType.bound(date)
+            start, end = _SummerType.bound(date)
             return DateRange(start, end)
         except:
             raise ValueError("date is not in Summer")
@@ -575,16 +575,16 @@ class SummerType(RangeType):
         y = date_range.year
         year_shift = shift // 2
         if shift % 2 != 0:
-            return WinterType.bound(dt.date(y + year_shift, 10, 1))
+            return _WinterType.bound(dt.date(y + year_shift, 10, 1))
         else:
-            return SummerType.bound(dt.date(y + year_shift, 4, 1))
+            return _SummerType.bound(dt.date(y + year_shift, 4, 1))
 
     @staticmethod
     def str(start, end):
         return "{}-SUM".format(start.year)
 
 
-class WinterType(RangeType):
+class _WinterType(_RangeType):
 
     aliases = {"winter", "win"}
 
@@ -625,7 +625,7 @@ class WinterType(RangeType):
     @staticmethod
     def date_range(date):
         try:
-            start, end = WinterType.bound(date)
+            start, end = _WinterType.bound(date)
             return DateRange(start, end)
         except:
             raise ValueError("date is not in Winter")
@@ -635,16 +635,16 @@ class WinterType(RangeType):
         y = date_range.year
         year_shift = math.ceil(shift / 2)
         if shift % 2 != 0:
-            return SummerType.bound(dt.date(y + year_shift, 4, 1))
+            return _SummerType.bound(dt.date(y + year_shift, 4, 1))
         else:
-            return WinterType.bound(dt.date(y + year_shift, 10, 1))
+            return _WinterType.bound(dt.date(y + year_shift, 10, 1))
 
     @staticmethod
     def str(start, end):
         return "{}-WIN".format(start.year)
 
 
-class YearType(RangeType):
+class _YearType(_RangeType):
 
     aliases = {"year", "yr", "y"}
 
@@ -672,14 +672,14 @@ class YearType(RangeType):
 
     @staticmethod
     def date_range(date):
-        start, end = YearType.bound(date)
+        start, end = _YearType.bound(date)
         return DateRange(start, end)
 
     @staticmethod
     def shifted(date_range, shift=1):
         y = date_range.year + shift
         try:
-            return YearType.bound(dt.date(y, 1, 1))
+            return _YearType.bound(dt.date(y, 1, 1))
         except:
             raise ValueError("shift size out of bounds")
 
@@ -688,7 +688,7 @@ class YearType(RangeType):
         return "{}".format(start.year)
 
 
-class GasYearType(RangeType):
+class _GasYearType(_RangeType):
 
     aliases = {"gasyear", "gas year", "gas_year", "gy"}
 
@@ -722,14 +722,14 @@ class GasYearType(RangeType):
 
     @staticmethod
     def date_range(date):
-        start, end = GasYearType.bound(date)
+        start, end = _GasYearType.bound(date)
         return DateRange(start, end)
 
     @staticmethod
     def shifted(date_range, shift=1):
         y = date_range.year + shift
         try:
-            return GasYearType.bound(dt.date(y, 10, 1))
+            return _GasYearType.bound(dt.date(y, 10, 1))
         except:
             raise ValueError("shift size out of bounds")
 

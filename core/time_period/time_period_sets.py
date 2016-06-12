@@ -19,9 +19,9 @@ class TimePeriodSet(frozenset):
             time_period_set.time_period_type = None
             return time_period_set
         elif time_period_type is None:
-            for candidate_type in TimePeriodType.__subclasses__():
+            for candidate_type in _TimePeriodType.__subclasses__():
                 if all(type(item) == candidate_type.time_period_class for item in collection):
-                    if candidate_type == LoadShapedDateRangeType:
+                    if candidate_type == _LoadShapedDateRangeType:
                         load_shapes = set(lsdr.load_shape for lsdr in collection)
                         if len(load_shapes) == 1:
                             default_load_shape = load_shapes.pop()
@@ -43,15 +43,15 @@ class TimePeriodSet(frozenset):
                 default_load_shape = LoadShape(default_load_shape)
             if isinstance(time_period_type, str):
                 time_period_type = time_period_type.lower().strip()
-                for candidate_type in TimePeriodType.__subclasses__():
+                for candidate_type in _TimePeriodType.__subclasses__():
                     if time_period_type in candidate_type.aliases:
                         time_period_type = candidate_type
                         break
                 else:
                     raise ValueError("cannot parse time_period_type")
             elif isinstance(time_period_type, type):
-                if time_period_type not in TimePeriodType.__subclasses__():
-                    for candidate_type in TimePeriodType.__subclasses__():
+                if time_period_type not in _TimePeriodType.__subclasses__():
+                    for candidate_type in _TimePeriodType.__subclasses__():
                         if candidate_type.time_period_class == time_period_type:
                             time_period_type = candidate_type
                             break
@@ -125,7 +125,7 @@ class TimePeriodSet(frozenset):
         return set(partition for partition in self.partition if partition.intersects(other))
 
 
-class TimePeriodType(object):
+class _TimePeriodType(object):
 
     aliases = set()
     tiem_period_class = ""
@@ -139,7 +139,7 @@ class TimePeriodType(object):
         raise NotImplementedError
 
 
-class LoadShapeType(TimePeriodType):
+class _LoadShapeType(_TimePeriodType):
 
     aliases = {'load_shape', 'LoadShape', 'ls', 'load shape'}
     time_period_class = LoadShape
@@ -194,7 +194,7 @@ class LoadShapeType(TimePeriodType):
         return partition_set
 
 
-class DateRangeType(TimePeriodType):
+class _DateRangeType(_TimePeriodType):
 
     aliases = {'date_range', 'DateRange', 'dr', 'date range'}
     time_period_class = DateRange
@@ -253,10 +253,10 @@ class DateRangeType(TimePeriodType):
                 else:
                     equivalence_classes[intersecting_drs].append(atomic_date_range)
         # now build the partition from the values in the equivalence_class dict
-        return set(TimePeriodSet(atoms, DateRangeType) for atoms in equivalence_classes.values())
+        return set(TimePeriodSet(atoms, _DateRangeType) for atoms in equivalence_classes.values())
 
 
-class LoadShapedDateRangeType(TimePeriodType):
+class _LoadShapedDateRangeType(_TimePeriodType):
 
     aliases = {'load_shaped_date_range', 'LoadShapedDateRange', 'lsdr', 'load shaped date range'}
     time_period_class = LoadShapedDateRange
@@ -287,7 +287,7 @@ class LoadShapedDateRangeType(TimePeriodType):
         of the partition.
         """
         equivalence_classes = {}
-        date_range_partition = TimePeriodSet([lsdr.date_range for lsdr in time_period_set], DateRangeType).partition
+        date_range_partition = TimePeriodSet([lsdr.date_range for lsdr in time_period_set], _DateRangeType).partition
         # follows the same pattern as before but the construction of the atomic units (this time a
         # LoadShapedDateRangeSet) are more complex. First partition the DateRangeSet of all date_range_set in
         # time_period_set. Then for each equivalence class of the DateRangeSet:
@@ -299,12 +299,12 @@ class LoadShapedDateRangeType(TimePeriodType):
         # LoadShapeSet equivalence class.
 
         for date_range_set in date_range_partition:
-            promoted_date_range_set = TimePeriodSet(date_range_set, LoadShapedDateRangeType, BASE)
+            promoted_date_range_set = TimePeriodSet(date_range_set, _LoadShapedDateRangeType, BASE)
             intersecting_load_shape_set = TimePeriodSet({lsdr.load_shape for lsdr in time_period_set
                                                         if promoted_date_range_set.intersects(lsdr)})
             intersecting_load_shape_partition = intersecting_load_shape_set.partition
             for load_shape in intersecting_load_shape_partition:
-                promoted_date_range_set = TimePeriodSet(date_range_set, LoadShapedDateRangeType, load_shape)
+                promoted_date_range_set = TimePeriodSet(date_range_set, _LoadShapedDateRangeType, load_shape)
                 intersecting_lsdrs = frozenset(lsdr for lsdr in time_period_set
                                                if promoted_date_range_set.intersects(lsdr))
                 if intersecting_lsdrs != frozenset({}):

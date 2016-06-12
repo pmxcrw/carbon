@@ -4,7 +4,7 @@ import unittest
 import pandas as pd
 import pandas.tseries.holiday
 
-from core.time_period.date_utilities import workdays
+from core.time_period.time_utilities import workdays
 
 
 class TestDateUtilities(unittest.TestCase):

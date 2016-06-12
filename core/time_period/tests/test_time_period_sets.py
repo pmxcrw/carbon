@@ -4,7 +4,7 @@ import unittest
 from core.time_period.date_range import DateRange
 from core.time_period.load_shape import LoadShape, BASE, PEAK, OFFPEAK, \
     DAYTIME, NIGHTTIME, WEEKDAY, WEEKEND, WEEKEND_OFFPEAK, WEEKDAY_OFFPEAK, WEEKEND_PEAK
-from core.time_period.time_period_sets import TimePeriodSet, LoadShapeType, DateRangeType, LoadShapedDateRangeType
+from core.time_period.time_period_sets import TimePeriodSet, _LoadShapeType, _DateRangeType, _LoadShapedDateRangeType
 from core.time_period.load_shaped_date_range import LoadShapedDateRange
 
 
@@ -30,21 +30,21 @@ class TestTimePeriodSet(unittest.TestCase):
         self.assertEqual(len(lss), len(expected))
         self.assertTrue(all(ls in expected for ls in lss))
         self.assertTrue(all(e in lss for e in expected))
-        self.assertEqual(LoadShapeType, lss.time_period_type)
+        self.assertEqual(_LoadShapeType, lss.time_period_type)
         self.assertEqual(None, lss.default_load_shape)
         drs = TimePeriodSet([DateRange('2012-M2'), DateRange('2016'), DateRange('2017')])
         expected = {DateRange('2012-M2'), DateRange('2016'), DateRange('2017')}
         self.assertEqual(len(drs), len(expected))
         self.assertTrue(all(dr in expected for dr in drs))
         self.assertTrue(all(e in drs for e in expected))
-        self.assertEqual(DateRangeType, drs.time_period_type)
+        self.assertEqual(_DateRangeType, drs.time_period_type)
         self.assertEqual(None, drs.default_load_shape)
         lsdrs = TimePeriodSet([LoadShapedDateRange('2012-M2'), LoadShapedDateRange('2015', 'offpeak')])
         expected = {LoadShapedDateRange('2012-M2'), LoadShapedDateRange('2015', 'offpeak')}
         self.assertEqual(len(lsdrs), len(expected))
         self.assertTrue(all(lsdr in expected for lsdr in lsdrs))
         self.assertTrue(all(e in lsdrs for e in expected))
-        self.assertEqual(LoadShapedDateRangeType, lsdrs.time_period_type)
+        self.assertEqual(_LoadShapedDateRangeType, lsdrs.time_period_type)
         self.assertEqual(None, drs.default_load_shape)
         with self.assertRaises(ValueError):
             TimePeriodSet({LoadShape('peak'), DateRange('2015'), LoadShapedDateRange('2016', 'weekend')})
@@ -54,16 +54,16 @@ class TestTimePeriodSet(unittest.TestCase):
         self.assertEqual(lss, lss_parse)
         lss_parse = TimePeriodSet(['peak', LoadShape('offpeak'), BASE], 'load shape')
         self.assertEqual(lss, lss_parse)
-        lss_parse = TimePeriodSet(('peak', LoadShape('offpeak'), BASE), LoadShapeType)
+        lss_parse = TimePeriodSet(('peak', LoadShape('offpeak'), BASE), _LoadShapeType)
         self.assertEqual(lss, lss_parse)
         with self.assertRaises(ValueError):
             TimePeriodSet({'peak', 'offpeak', 'base'}, 'xyz')
         with self.assertRaises(ValueError):
             TimePeriodSet({'peak', 'offpeak', 'base'}, 3)
         with self.assertRaises(ValueError):
-            TimePeriodSet({'peak', BASE, DateRange('2015')}, LoadShapeType)
+            TimePeriodSet({'peak', BASE, DateRange('2015')}, _LoadShapeType)
         with self.assertRaises(ValueError):
-            TimePeriodSet({'peak', BASE, LoadShapedDateRange('2015', 'base')}, LoadShapeType)
+            TimePeriodSet({'peak', BASE, LoadShapedDateRange('2015', 'base')}, _LoadShapeType)
         with self.assertRaises(TypeError):
             TimePeriodSet({'peak', 'offpeak', 'base'}, int)
         with self.assertRaises(TypeError):
@@ -74,9 +74,9 @@ class TestTimePeriodSet(unittest.TestCase):
         self.assertEqual(drs, drs_parse)
         drs_parse = TimePeriodSet({'2012-M2', '2016', '2017'}, 'date range')
         self.assertEqual(drs, drs_parse)
-        drs_parse = TimePeriodSet({'2012-M2', '2016', '2017'}, DateRangeType)
+        drs_parse = TimePeriodSet({'2012-M2', '2016', '2017'}, _DateRangeType)
         self.assertEqual(drs, drs_parse)
-        drs_parse = TimePeriodSet({'2016', dt.date(2016, 5, 20), DateRange('2017')}, DateRangeType)
+        drs_parse = TimePeriodSet({'2016', dt.date(2016, 5, 20), DateRange('2017')}, _DateRangeType)
         expected = TimePeriodSet({DateRange('2016'), DateRange('2016-05-20'), DateRange('2017')})
         self.assertEqual(expected, drs_parse)
         with self.assertRaises(ValueError):
@@ -84,9 +84,9 @@ class TestTimePeriodSet(unittest.TestCase):
         with self.assertRaises(ValueError):
             TimePeriodSet({'2012-M2', '2016', '2017'}, 3)
         with self.assertRaises(ValueError):
-            TimePeriodSet({BASE, DateRange('2015')}, DateRangeType)
+            TimePeriodSet({BASE, DateRange('2015')}, _DateRangeType)
         with self.assertRaises(ValueError):
-            TimePeriodSet({'2016', LoadShapedDateRange('2015', 'base')}, LoadShapeType)
+            TimePeriodSet({'2016', LoadShapedDateRange('2015', 'base')}, _LoadShapeType)
         with self.assertRaises(TypeError):
             TimePeriodSet({'peak', 'offpeak', 'base'}, int)
         with self.assertRaises(TypeError):
@@ -100,7 +100,7 @@ class TestTimePeriodSet(unittest.TestCase):
         self.assertEqual(lsdrs, lsdrs_parse)
         lsdrs_parse = TimePeriodSet({'2012-M2', '2016', '2017'}, 'load shaped date range', 'offpeak')
         self.assertEqual(lsdrs, lsdrs_parse)
-        lsdrs_parse = TimePeriodSet({'2012-M2', '2016', '2017'}, LoadShapedDateRangeType, OFFPEAK)
+        lsdrs_parse = TimePeriodSet({'2012-M2', '2016', '2017'}, _LoadShapedDateRangeType, OFFPEAK)
         self.assertEqual(lsdrs, lsdrs_parse)
         lsdrs_parse = TimePeriodSet({LoadShapedDateRange('2016', 'peak'),
                                      dt.date(2016, 5, 20),
@@ -111,7 +111,7 @@ class TestTimePeriodSet(unittest.TestCase):
                                   LoadShapedDateRange('2017', PEAK)})
         self.assertEqual(expected, lsdrs_parse)
         with self.assertRaises(ValueError):
-            TimePeriodSet({'peak', LoadShapedDateRange('2015', 'base')}, LoadShapedDateRangeType, BASE)
+            TimePeriodSet({'peak', LoadShapedDateRange('2015', 'base')}, _LoadShapedDateRangeType, BASE)
         with self.assertRaises(ValueError):
             TimePeriodSet({'2015', '2016', '2017'}, LoadShapedDateRange)
 
@@ -119,14 +119,14 @@ class TestTimePeriodSet(unittest.TestCase):
         lss = TimePeriodSet([LoadShape('peak'), LoadShape('offpeak'), BASE])
         drs = TimePeriodSet([DateRange('2012-M2'), DateRange('2016'), DateRange('2017')])
         self.assertFalse(lss == drs)
-        lss2 = TimePeriodSet({'peak', 'offpeak', 'base'}, LoadShapeType)
+        lss2 = TimePeriodSet({'peak', 'offpeak', 'base'}, _LoadShapeType)
         self.assertTrue(lss == lss2)
         lss2.default_load_shape = BASE
         self.assertFalse(lss == lss2)
-        drs2 = TimePeriodSet({'2012-M2', '2016', '2017'}, DateRangeType)
-        drs2.time_period_type = LoadShapeType
+        drs2 = TimePeriodSet({'2012-M2', '2016', '2017'}, _DateRangeType)
+        drs2.time_period_type = _LoadShapeType
         self.assertNotEqual(drs, drs2)
-        self.assertEqual(drs, TimePeriodSet({'2012-M2', '2016', '2017'}, DateRangeType))
+        self.assertEqual(drs, TimePeriodSet({'2012-M2', '2016', '2017'}, _DateRangeType))
 
     def test_union(self):
         left = TimePeriodSet(['base', 'peak'], LoadShape)
