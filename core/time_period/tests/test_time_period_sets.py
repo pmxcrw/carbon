@@ -21,6 +21,10 @@ class TestTimePeriodSet(unittest.TestCase):
     def test_init(self):
 
         # test homogeneous collections
+        empty = TimePeriodSet({})
+        self.assertEqual(len(empty), 0)
+        self.assertEqual(None, empty.default_load_shape)
+        self.assertEqual(None, empty.time_period_type)
         lss = TimePeriodSet([LoadShape('peak'), LoadShape('offpeak'), BASE])
         expected = {LoadShape('peak'), LoadShape('offpeak'), BASE}
         self.assertEqual(len(lss), len(expected))
@@ -193,14 +197,14 @@ class TestTimePeriodSet(unittest.TestCase):
             TimePeriodSet({}).partition
 
     def test_DateRange_partition(self):
-        expected = [TimePeriodSet({DateRange(dt.date(2016, 1, 1), dt.date(2016, 1, 30))}),
+        expected = {TimePeriodSet({DateRange(dt.date(2016, 1, 1), dt.date(2016, 1, 30))}),
                     TimePeriodSet({DateRange(dt.date(2016, 1, 31), dt.date(2016, 1, 31))}),
                     TimePeriodSet({DateRange(dt.date(2016, 2, 1), dt.date(2016, 2, 29))}),
                     TimePeriodSet({DateRange(dt.date(2016, 10, 1), dt.date(2016, 12, 31)),
                                   DateRange(dt.date(2016, 3, 1), dt.date(2016, 3, 31))}),
                     TimePeriodSet({DateRange(dt.date(2016, 4, 1), dt.date(2016, 6, 30))}),
                     TimePeriodSet({DateRange(dt.date(2016, 7, 1), dt.date(2016, 9, 30))}),
-                    TimePeriodSet({DateRange(dt.date(2018, 1, 1), dt.date(2018, 12, 31))})]
+                    TimePeriodSet({DateRange(dt.date(2018, 1, 1), dt.date(2018, 12, 31))})}
 
         self.assertEqual(expected, self.drs.partition)
 
@@ -209,6 +213,19 @@ class TestTimePeriodSet(unittest.TestCase):
         example = TimePeriodSet({DateRange('2012-M12'), DateRange('2012-Q4')})
         self.assertEqual(expected, example.partition)
 
+    def test_LoadShapedDateRange_partition(self):
+        expected = {TimePeriodSet({LoadShapedDateRange('2012-M2', 'Peak')})}
+        input = TimePeriodSet({LoadShapedDateRange('2012-M2', 'Peak')})
+        self.assertEqual(expected, input.partition)
+
+        expected = {TimePeriodSet({LoadShapedDateRange('2012-M2', 'Peak')}),
+                    TimePeriodSet({LoadShapedDateRange('2012-M1', 'Base'),
+                                            LoadShapedDateRange('2012-M2', 'Offpeak'),
+                                            LoadShapedDateRange('2012-M3', 'Base')})}
+        feb_12_peak = LoadShapedDateRange('2012-M2', 'peak')
+        q1_12_base = LoadShapedDateRange('2012-Q1', 'Base')
+        test_set = TimePeriodSet([feb_12_peak, q1_12_base])
+        self.assertEqual(expected, test_set.partition)
 
 class TestLoadShapeSet(unittest.TestCase):
 

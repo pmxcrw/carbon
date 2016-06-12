@@ -9,25 +9,30 @@ import datetime as dt
 import functools
 
 
-class TimePeriodSet(set):
+class TimePeriodSet(frozenset):
 
-    def __init__(self, collection, time_period_type=None, default_load_shape=None):
+    def __new__(cls, collection, time_period_type=None, default_load_shape=None):
         if len(collection) == 0:
-            self.default_load_shape = None
-            self.time_period_type = None
-            super(TimePeriodSet, self).__init__(collection)
+            time_period_set = super().__new__(cls, collection)
+            time_period_set.default_load_shape = None
+            time_period_set.time_period_type = None
+            return time_period_set
         elif time_period_type is None:
             for candidate_type in TimePeriodType.__subclasses__():
                 if all(type(item) == candidate_type.time_period_class for item in collection):
                     if candidate_type == LoadShapedDateRangeType:
                         load_shapes = set(lsdr.load_shape for lsdr in collection)
                         if len(load_shapes) == 1:
-                            self.default_load_shape = load_shapes.pop()
+                            default_load_shape = load_shapes.pop()
+                        else:
+                            default_load_shape = None
                     else:
-                        self.default_load_shape = None
-                    self.time_period_type = candidate_type
-                    super(TimePeriodSet, self).__init__(collection)
-                    break
+                        default_load_shape = None
+                    time_period_type = candidate_type
+                    time_period_set = super().__new__(cls, collection)
+                    time_period_set.time_period_type = time_period_type
+                    time_period_set.default_load_shape = default_load_shape
+                    return time_period_set
             else:
                 msg = "time_period_type not provided, and collection isn't all of the same"
                 msg += " known time period"
@@ -35,7 +40,6 @@ class TimePeriodSet(set):
         else:
             if isinstance(default_load_shape, str):
                 default_load_shape = LoadShape(default_load_shape)
-            self.default_load_shape = default_load_shape
             if isinstance(time_period_type, str):
                 time_period_type = time_period_type.lower().strip()
                 for candidate_type in TimePeriodType.__subclasses__():
@@ -55,11 +59,13 @@ class TimePeriodSet(set):
             else:
                 raise ValueError("cannot parse time_period_type")
             parsed_collection = time_period_type.parse(collection, default_load_shape)
-            self.time_period_type = time_period_type
-            super(TimePeriodSet, self).__init__(parsed_collection)
+            time_period_set = super().__new__(cls, parsed_collection)
+            time_period_set.time_period_type = time_period_type
+            time_period_set.default_load_shape = default_load_shape
+            return time_period_set
 
-    # def __hash__(self):
-    #     return functools.reduce(lambda x, y: hash(x) * hash(y), self, 1)
+    def __hash__(self):
+        return hash(frozenset(item for item in self)) * hash((self.time_period_type, self.default_load_shape))
 
     def __eq__(self, other):
         eq = type(self) == type(other)
@@ -77,12 +83,14 @@ class TimePeriodSet(set):
         return not self == other
 
     def union(self, other):
+        time_period_type = self.time_period_type
+        default_load_shape = self.default_load_shape
         if isinstance(other, TimePeriodSet):
-            if self.time_period_type != other.time_period_type:
+            if time_period_type != other.time_period_type:
                 raise TypeError("cannot join TimePeriodSet objects if they have different time_period_type")
-        return TimePeriodSet(super(TimePeriodSet, self).union(other),
-                             self.time_period_type,
-                             self.default_load_shape)
+            if self.default_load_shape != other.default_load_shape:
+                default_load_shape = None
+        return TimePeriodSet(super(TimePeriodSet, self).union(other), time_period_type, default_load_shape)
 
     def intersects(self, other):
         if type(other) == self.time_period_type.time_period_class:
@@ -109,6 +117,11 @@ class TimePeriodSet(set):
             return self.time_period_type.partition(self)
         else:
             raise TypeError("partition not defined for empty TimePeriodSet")
+
+    def partition_intersecting(self, other):
+        """Given a time period (date range etc.) to cover, returns the set of equivalence classes of the TimePeriodSet
+        which intersect this time period. The time period must be homogenous with the items in TimePeriodSet"""
+        return set(partition for partition in self.partition if partition.intersects(other))
 
 
 class TimePeriodType(object):
@@ -239,7 +252,7 @@ class DateRangeType(TimePeriodType):
                 else:
                     equivalence_classes[intersecting_drs].append(atomic_date_range)
         # now build the partition from the values in the equivalence_class dict
-        return [TimePeriodSet(atoms, DateRangeType) for atoms in equivalence_classes.values()]
+        return set(TimePeriodSet(atoms, DateRangeType) for atoms in equivalence_classes.values())
 
 
 class LoadShapedDateRangeType(TimePeriodType):
@@ -273,7 +286,7 @@ class LoadShapedDateRangeType(TimePeriodType):
         of the partition.
         """
         equivalence_classes = {}
-        date_range_partition = TimePeriodSet(time_period_set, DateRangeType).partition
+        date_range_partition = TimePeriodSet([lsdr.date_range for lsdr in time_period_set], DateRangeType).partition
         # follows the same pattern as before but the construction of the atomic units (this time a
         # LoadShapedDateRangeSet) are more complex. First partition the DateRangeSet of all date_range_set in
         # time_period_set. Then for each equivalence class of the DateRangeSet:
@@ -290,7 +303,7 @@ class LoadShapedDateRangeType(TimePeriodType):
                                                         if promoted_date_range_set.intersects(lsdr)})
             intersecting_load_shape_partition = intersecting_load_shape_set.partition
             for load_shape in intersecting_load_shape_partition:
-                promoted_date_range_set = LoadShapedDateRangeSet(date_range_set, load_shape)
+                promoted_date_range_set = TimePeriodSet(date_range_set, LoadShapedDateRangeType, load_shape)
                 intersecting_lsdrs = frozenset(lsdr for lsdr in time_period_set if promoted_date_range_set.intersects(lsdr))
                 if intersecting_lsdrs != frozenset({}):
                     if intersecting_lsdrs not in equivalence_classes:
@@ -301,7 +314,7 @@ class LoadShapedDateRangeType(TimePeriodType):
         return set(lsdr_set for lsdr_set in equivalence_classes.values())
 
 a = TimePeriodSet([LoadShape('peak'), LoadShape('offpeak')])
-print(a.time_period_type, a)
+print(a.time_period_type, a, hash(a))
 b = TimePeriodSet([DateRange('2012-M2'), DateRange('2016'), DateRange('2017')])
 print(b.time_period_type, b)
 c = TimePeriodSet([LoadShapedDateRange('2012-M2'), LoadShapedDateRange('2015', 'offpeak')])
