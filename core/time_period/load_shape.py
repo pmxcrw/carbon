@@ -19,14 +19,14 @@ class LoadShape(object):
             if isinstance(bitmap, int):
                 # we don't have this bitmap, so need to call __new__ to
                 # allocate new memory, set the attributes and store in the
-                # class level _instances dict.
+                # class level instances dict.
                 load_shape = super(LoadShape, cls).__new__(cls)
                 load_shape.name = name
                 load_shape.bitmap = bitmap
                 cls._instances[bitmap] = load_shape
                 return load_shape
             elif isinstance(bitmap, str):
-                # see if the class level _instances dict already has an
+                # see if the class level instances dict already has an
                 # instances with a name similar to the input string.
                 bitmap = bitmap.lower().strip()
                 for known_bitmap in cls._instances:
