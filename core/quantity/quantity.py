@@ -128,9 +128,6 @@ class Unit(object):
             # there are repeated units, so we need to sum their exponents then consolidate the unit list as above
             reduced_units, reduced_exponents = Unit._simplify(sorted(unique_units), sorted(zip(units, exponents)))
 
-        if len(reduced_units) == 0:
-            raise UnitError("cannot have empty units")
-
         # implement multiton
         try:
             return cls._instances[(reduced_units, reduced_exponents)]
@@ -233,12 +230,14 @@ class Unit(object):
             return (), ()
         # and then remove any units with an exponent of zero
         if 0 in consolidated_exponents:
-            consolidated_units = list(consolidated_units)
-            consolidated_exponents = list(consolidated_exponents)
+            new_units = []
+            new_exponents = []
             for index, exponent in enumerate(consolidated_exponents):
-                if exponent == 0:
-                    consolidated_exponents.remove(exponent)
-                    consolidated_units.pop(index)
+                if exponent != 0:
+                    new_units.append(consolidated_units[index])
+                    new_exponents.append(exponent)
+            consolidated_exponents = new_exponents
+            consolidated_units = new_units
         return tuple(consolidated_units), tuple(consolidated_exponents)
 
     @staticmethod
@@ -385,6 +384,9 @@ class Unit(object):
             combined_units = list(self.units + rhs.units)
             combined_exponents = self.exponents + rhs.exponents
             try:
+                product = Unit(combined_units, combined_exponents)
+                if product == DIMENSIONLESS:
+                    return 1
                 Unit._cache[('*', self, rhs)] = Unit(combined_units, combined_exponents)
             except UnitError:
                 Unit._cache[('*', self, rhs)] = Unit._consolidate(combined_units, combined_exponents)
@@ -392,15 +394,12 @@ class Unit(object):
         elif isinstance(rhs, Quantity):
             return (self * rhs.unit) * rhs.value
         elif isinstance(rhs, (int, float)):
-            if rhs == 1:
-                return self
             return Quantity(rhs, self)
-        elif isinstance(rhs, np.ndarray):
+        else:
             try:
                 if rhs.dtype == object:
                     return rhs * self
-                else:
-                    return Quantity(rhs, self)
+                return Quantity(rhs, self)
             except:
                 raise UnitError("cannot multiply Unit {} with {}".format(self, rhs))
 
@@ -426,22 +425,27 @@ class Unit(object):
             combined_units = list(self.units + rhs.units)
             combined_exponents = self.exponents + rhs.exponents
             try:
+                division = Unit(combined_units, combined_exponents)
+                if division == DIMENSIONLESS:
+                    return 1
                 Unit._cache[('/', self, rhs)] = Unit(combined_units, combined_exponents)
             except UnitError:
                 Unit._cache[('/', self, rhs)] = Unit._consolidate(combined_units, combined_exponents)
             return Unit._cache[('/', self, rhs)]
         elif isinstance(rhs, Quantity):
             return (self * rhs.unit.inverse) / rhs.value
+        elif isinstance(rhs, (int, float)):
+            return Quantity(1 / rhs, self)
         else:
             try:
+                if rhs.dtype == object:
+                    return 1 / (rhs / self)
                 return Quantity(1 / rhs, self)
             except:
-                raise KeyError("cannot multiply Unit with {}".format(self))
+                raise UnitError("cannot multiply Unit with {}".format(self))
 
     def __rtruediv__(self, lhs):
         assert isinstance(lhs, (int, float, np.ndarray))
-        if lhs == 1:
-            return Quantity(1, self.inverse)
         return Quantity(lhs, self.inverse)
 
     @property
@@ -489,11 +493,15 @@ class Unit(object):
 
     @property
     def numerator(self):
-        return self._separate()[0]
+        if self._separate()[0]:
+            return self._separate()[0]
+        return DIMENSIONLESS
 
     @property
     def denominator(self):
-        return self._separate()[1].inverse
+        if self._separate()[1]:
+            return self._separate()[1].inverse
+        return DIMENSIONLESS
 
     def __str__(self):
         def _format(unit, exponent):
@@ -509,7 +517,10 @@ class Unit(object):
             if denominator and len(numerator) > 1:
                 string = "(" + string + ")"
         else:
-            string = "1"
+            if denominator:
+                string = "1"
+            else:
+                return "DIMENSIONLESS"
         if denominator:
             denominator = list(zip(denominator.units, denominator.exponents))
             string += " / "
@@ -528,7 +539,7 @@ class Unit(object):
 
 
 class Quantity(object):
-    def __init__(self, value, unit=None):
+    def __init__(self, value, unit=Unit([], [])):
         if isinstance(value, str):
             value, unit = Quantity._parse(value)
         self.value = np.array(value, np.float64)
@@ -553,7 +564,12 @@ class Quantity(object):
         :param string: the input string
         :return: value, unit
         """
-        if "*" in string:
+        if string.startswith("Quantity"):
+            start, end = string.find("("), string.rfind(")")
+            if start == -1 or end == -1:
+                raise ValueError("unbalanced parentheses")
+            value, unit = string[start + 1:end].rsplit(",", 1)
+        elif "*" in string:
             value, unit = string.split("*")
         else:
             index = 0
@@ -610,7 +626,12 @@ class Quantity(object):
             elif isinstance(new_unit, Quantity):
                 return Quantity(self.value * new_unit.value, new_unit.unit)
             elif isinstance(new_unit, (float, int)):
-                return self.value * new_unit
+                if self.value.shape:
+                    # we don't want to return a "regular" np.ndarray because we can't overload right multiplication
+                    # better to return a Quantity object so that left and right multiplication are equivalent
+                    return Quantity(self.value * new_unit, Unit([],[]))
+                else:
+                    return self.value * new_unit
         elif isinstance(rhs, (int, float, np.ndarray)):
             return Quantity(self.value * rhs, self.unit)
 
@@ -627,8 +648,15 @@ class Quantity(object):
             elif isinstance(new_unit, Quantity):
                 return Quantity(self.value / rhs.value * new_unit.value, new_unit.unit)
             elif isinstance(new_unit, (float, int)):
-                return self.value * new_unit
+                if self.value.shape:
+                    # we don't want to return a "regular" np.ndarray because we can't overload right multiplication
+                    # better to return a Quantity object so that left and right multiplication are equivalent
+                    return Quantity(self.value / rhs.value * new_unit, Unit([], []))
+                else:
+                    return self.value / rhs.value * new_unit
         elif isinstance(rhs, (int, float, np.ndarray)):
+            if np.any(rhs == 0):
+                raise ZeroDivisionError
             return Quantity(self.value / rhs, self.unit)
 
     def __rtruediv__(self, lhs):
@@ -645,19 +673,33 @@ class Quantity(object):
         :param rhs: Quantity
         :return: Quantity
         """
-        try:
-            if self.unit == rhs.unit:
+        if isinstance(rhs, Quantity):
+            if self.unit == rhs.unit or (rhs.unit == DIMENSIONLESS and rhs.value == 0):
                 return Quantity(self.value + rhs.value, self.unit)
+            elif self.unit == DIMENSIONLESS:
+                return Quantity(self.value + rhs.value, rhs.unit)
             else:
                 std_lhs, std_rhs = Unit.standardise(self.unit, rhs.unit)
                 if std_lhs.unit == std_rhs.unit:
                     return Quantity(self.value * std_lhs.value + rhs.value * std_rhs.value, std_lhs.unit)
             raise UnitError("Cannot add quantities of different units: {} and {}".format(self.unit, rhs.unit))
-        except AttributeError:
-            raise TypeError("Cannot add Quantity and unitless object")
+        # allow addition of a scalar with a number or array, dropping the result back down to a number or array
+        elif self.unit == DIMENSIONLESS:
+            return self.value + rhs
+        # need to allow for addition of zero, otherwise the sum function/method breaks
+        elif isinstance(rhs, np.ndarray):
+            if all(rhs == 0):
+                # here we don't return self, because we potentially want to broadcast the array, e.g.
+                # Quantity(1, GBP) + array([0,0,0]) -> Quantity([1, 1, 1], GBP)
+                return Quantity(self.value + rhs, self.unit)
+        elif rhs == 0:
+            return self
+        raise TypeError("Cannot add Quantity and unitless object")
 
     def __radd__(self, lhs):
-        return self.__add__(lhs)
+        if lhs == 0:
+            return self
+        return self + lhs
 
     def __neg__(self):
         return Quantity(-self.value, self.unit)
@@ -669,7 +711,10 @@ class Quantity(object):
         return -self.__add__(lhs)
 
     def __pow__(self, exponent):
-        new_exponents = (old_exponent * exponent for old_exponent in self.unit.exponents)
+        new_exponents = []
+        for old_exponent in self.unit.exponents:
+            new_exponents.append(old_exponent * exponent)
+        #new_exponents = (old_exponent * exponent for old_exponent in self.unit.exponents)
         return Quantity(self.value ** exponent, Unit(self.unit.units, new_exponents))
 
     def __abs__(self):
@@ -686,11 +731,18 @@ class Quantity(object):
         return Quantity(self.value[index], self.unit)
 
     def __setitem__(self, index, new_value):
-        try:
-            new_value = new_value.convert(self.unit)
-        except AttributeError:
-            raise UnitError("Can't assign {} to {} Quantity[Item={}]".format(new_value, self.unit, index))
-        self.value[index] = new_value.value
+        if self.unit == DIMENSIONLESS:
+            if isinstance(new_value, Quantity):
+                self.unit = new_value.unit
+                self.value[index] = new_value.value
+            else:
+                self.value[index] = new_value
+        else:
+            try:
+                new_value = new_value.convert(self.unit)
+            except AttributeError:
+                raise UnitError("Can't assign {} to {} Quantity[Item={}]".format(new_value, self.unit, index))
+            self.value[index] = new_value.value
 
     def is_zero(self):
         return all(self.value == 0)
@@ -703,6 +755,7 @@ class Quantity(object):
               are compatible and the values compare after converting to equal units
             - A quantity and unit are equal, provided the units are equal and the value of the quantity is 1
             - A quantity is equal to zero (integer, float) if all it's values are zero
+            - A quanitty with DIMENSIONLESS unit can be equal to an interger / float if the values are equal.
 
         :param other: the object being compared
         :return: boolean
@@ -710,47 +763,56 @@ class Quantity(object):
         try:
             if isinstance(other, Quantity):
                 # quantities can be equal even if they are quoted in different, but comparable units
-                other = other.convert(self.unit)
+                if self.unit != DIMENSIONLESS and other.unit != DIMENSIONLESS:
+                    other = other.convert(self.unit)
                 return np.all(self.value == other.value) and (self.unit == other.unit or np.all(other.value == 0))
             elif isinstance(other, Unit) and np.all(self.value == 1):
                 return self.unit == other
-            elif np.all(self.value == 0) and other == 0:
-                return True
+            elif np.all(self.value == 0) or self.unit == DIMENSIONLESS:
+                return np.all(self.value == other)
             else:
                 return False
         except UnitError:
             return False
 
+
     def __ne__(self, other):
         return not self == other
 
     def __gt__(self, other):
-        if isinstance(other, (int, float)) and other == 0:
-            return self.value > 0
+        if isinstance(other, (int, float)):
+            if other == 0:
+                return self.value > 0
+            if self.unit == DIMENSIONLESS:
+                return self.value > other
         try:
             other = other.convert(self.unit)
             return self.value > other.value
         except AttributeError:
             raise TypeError("{} ({}) is not a Quantity of {}".format(other, type(other), self.unit))
         except UnitError:
-            raise UnitError("units of {} ({}) are not equivalent to {} ({})",
-                            format(other, other.unit, self, self.unit))
+            raise UnitError("units of {} ({}) are not equivalent to {} ({})".format(other, other.unit, self, self.unit))
 
     def __ge__(self, other):
-        if isinstance(other, (int, float)) and other == 0:
-            return self.value >= 0
+        if isinstance(other, (int, float)):
+            if other == 0:
+                return self.value >= 0
+            if self.unit == DIMENSIONLESS:
+                return self.value >= other
         try:
             other = other.convert(self.unit)
             return self.value >= other.value
         except AttributeError:
             raise TypeError("{} ({}) is not a Quantity of {}".format(other, type(other), self.unit))
         except UnitError:
-            raise UnitError("units of {} ({}) are not equivalent to {} ({})",
-                            format(other, other.unit, self, self.unit))
+            raise UnitError("units of {} ({}) are not equivalent to {} ({})".format(other, other.unit, self, self.unit))
 
     def __lt__(self, other):
-        if isinstance(other, (int, float)) and other == 0:
-            return self.value < 0
+        if isinstance(other, (int, float)):
+            if other == 0:
+                return self.value < 0
+            if self.unit == DIMENSIONLESS:
+                return self.value < other
         try:
             other = other.convert(self.unit)
             return self.value < other.value
@@ -761,8 +823,11 @@ class Quantity(object):
                             format(other, other.unit, self, self.unit))
 
     def __le__(self, other):
-        if isinstance(other, (int, float)) and other == 0:
-            return self.value <= 0
+        if isinstance(other, (int, float)):
+            if other == 0:
+                return self.value <= 0
+            if self.unit == DIMENSIONLESS:
+                return self.value <= other
         try:
             other = other.convert(self.unit)
             return self.value <= other.value
@@ -773,7 +838,7 @@ class Quantity(object):
                             format(other, other.unit, self, self.unit))
 
     def __bool__(self):
-        return np.all(self.value)
+        return bool(np.all(self.value))
 
     def round(self, ndigits):
         return Quantity(np.round(self.value, ndigits), self.unit)
@@ -790,19 +855,30 @@ class Quantity(object):
 
 
 # Numpy functions mapped to Units
-def ones(length, unit):
+def ones(length, unit=Unit([],[])):
     return Quantity(np.ones(length), unit)
 
 
-def zeros(length, unit):
+def zeros(length, unit=Unit([],[])):
     return Quantity(np.zeros(length), unit)
 
 
-def array(iterable, unit):
+def array(iterable, unit=Unit([],[])):
+    """
+    An np.ndarray like object, primarily exists because multiplying an np.ndarray by a unit gives different
+    behaviour between left multiplication (a Quantity, with the array as it's value) and right multiplication (an array
+    who's elements are Quantities). This function always returns a Quantity, defaulting to DIMENSIONLESS unit so that it can
+    be used as an alternative to an np.ndarray. This array has consistent behaviour between left multiplication and
+    right multiplication. Both of them return a new Quantity, who's value is the array.
+
+    :param iterable: quantities to be initialised as an np.ndarray in the objects value
+    :param unit: the unit for the array, defaults to DIMENSIONLESS
+    :return: Quantity object
+    """
     return Quantity(np.array(iterable), unit)
 
 
-def empty(shape, unit):
+def empty(shape, unit=Unit([],[])):
     return Quantity(np.empty(shape), unit)
 
 def var(quantity_array, *args, **kwargs):
@@ -851,7 +927,11 @@ def concatenate(quantity_list, axis=0):
         values = [quantity.value for quantity in quantity_list]
         units = set(quantity.unit for quantity in quantity_list)
         if len(units) == 1:
-            return Quantity(np.concatenate(values, axis), units.pop())
+            try:
+                return Quantity(np.concatenate(values, axis), units.pop())
+            except ValueError:
+                # quantity_list is a list of zero dimensional ndarrays, so can't be concatenated.
+                return Quantity(values, units.pop())
     except AttributeError:
         raise ValueError("concatenate must be passed a list of Quantities")
     values = quantity_list[0].value
@@ -860,7 +940,13 @@ def concatenate(quantity_list, axis=0):
         done, new = Unit.standardise(unit, quantity.unit)
         unit = done.unit
         if unit == new.unit:
-            values = np.concatenate([values * done.value, quantity.value * new.value], axis)
+            try:
+                values = np.concatenate([values * done.value, quantity.value * new.value], axis)
+            except ValueError:
+                # quantity list is a list of zero dimensional ndarrays, so can't be concatenated.
+                values = [values] if isinstance(values, np.ndarray) else values
+                values = [existing * done.value for existing in values]
+                values += [quantity.value * new.value]
         else:
             raise UnitError("can only concatenate list of Quantities with equivalent units")
     return Quantity(values, unit)
@@ -900,6 +986,7 @@ API2_GJ_PER_TONNE = 25.12
 HMRC_API2_CARBON_INTENSITY = 2252.7 / 1000
 
 # Base Units
+_DIMENSIONLESS = _BaseUnit("DIMENSIONLESS")
 _MWH = _BaseUnit("MWH")
 _BBL = _BaseUnit("BBL")
 _KNOT = _BaseUnit("KNOT")
@@ -929,6 +1016,8 @@ _YEAR = _DerivedUnit("YEAR", DAYS_PER_YEAR, _DAY)
 _PENCE = _DerivedUnit("PENCE", 0.01, _GBP)
 
 # Public Units
+DIMENSIONLESS = Unit([], [])
+
 PENCE = Unit([_PENCE], [1])
 GBP = Unit([_GBP], [1])
 USD = Unit([_USD], [1])
@@ -953,7 +1042,7 @@ HOUR = Unit([_HOUR], [1])
 MINUTE = Unit([_MINUTE], [1])
 YEAR = Unit([_YEAR], [1])
 
-MW = MWH / HOUR
+MW = Quantity(1/24, MWH / DAY)
 
 # HMRC conversion of carbon tax in gbp/tonne to gbp/kWh gas
 # Gaseous fules, natural gas: kg C02e per kWh
