@@ -1,16 +1,15 @@
-from abc import abstractproperty
+from abc import abstractproperty, abstractmethod
 from core.quantity.quantity import DAY
 
 import datetime as dt
 
 class AbstractSettlementRule(object):
 
-    def __init__(self, time_period, discount_curve):
+    def __init__(self, time_period):
         self.time_period = time_period
-        self.discount_curve = discount_curve
 
-    @abstractproperty
-    def discounted_duration(self):
+    @abstractmethod
+    def discounted_duration(self, discount_curve):
         """Computes the discounted duration of a time period"""
 
     @abstractproperty
@@ -20,9 +19,8 @@ class AbstractSettlementRule(object):
 
 class DayOfDeliverySettlementRule(AbstractSettlementRule):
 
-    @property
-    def discounted_duration(self):
-        discounted_duration = sum(self.discount_curve.price(date) * date.duration for date in self.time_period)
+    def discounted_duration(self, discount_curve):
+        discounted_duration = sum(discount_curve.price(date) * date.duration for date in self.time_period)
         return discounted_duration
 
     @property
@@ -47,9 +45,8 @@ class PeriodicSettlementRule(AbstractSettlementRule):
     def _settlement_date(self, period):
         """Defines how to get from the individual monthly delivery period to settlement date"""
 
-    @property
-    def discounted_duration(self):
-        duration = sum(period.duration * self.discount_curve.price(settlement_date)
+    def discounted_duration(self, discount_curve):
+        duration = sum(period.duration * discount_curve.price(settlement_date)
                        for period, settlement_date in self.settlement_dates.items())
         return duration
 

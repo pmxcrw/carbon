@@ -14,11 +14,11 @@ class AbstractDateRange(object):
 
     def discounted_duration(self, settlement_rule, discount_curve):
         """calculates the discounted duration for use in curve construction"""
-        return settlement_rule(self, discount_curve).discounted_duration
+        return settlement_rule(self).discounted_duration(discount_curve)
 
     def settlement_dates(self, settlement_rule):
         """calculates the settlement dates associated with a date range"""
-        return settlement_rule(self, None).settlement_dates
+        return settlement_rule(self).settlement_dates
 
     @abstractproperty
     def duration(self):
