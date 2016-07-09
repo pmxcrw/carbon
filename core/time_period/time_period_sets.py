@@ -3,9 +3,8 @@
 # TODO: into a TimePeriodSet with LoadShapedDateRangeType (or individual LoadShapedDateRange) and then call the existing
 # TODO: union, intersect and intersection operations.
 
-from core.time_period.date_range import DateRange
+from core.time_period.date_range import DateRange, LoadShapedDateRange
 from core.time_period.load_shape import LoadShape, BASE
-from core.time_period.load_shaped_date_range import LoadShapedDateRange
 
 import datetime as dt
 
@@ -25,10 +24,6 @@ class TimePeriodSet(frozenset):
                         load_shapes = set(lsdr.load_shape for lsdr in collection)
                         if len(load_shapes) == 1:
                             default_load_shape = load_shapes.pop()
-                        else:
-                            default_load_shape = None
-                    else:
-                        default_load_shape = None
                     time_period_type = candidate_type
                     time_period_set = super().__new__(cls, collection)
                     time_period_set.time_period_type = time_period_type

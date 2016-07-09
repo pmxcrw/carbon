@@ -1,7 +1,8 @@
 import datetime as dt
 import unittest
 
-from core.time_period.date_range import DateRange, _YearType, _DayType
+from core.quantity.quantity import DAY
+from core.time_period.date_range import DateRange, _YearType, _DayType, LoadShapedDateRange, NEVER_LSDR
 from core.time_period.load_shape import BASE, PEAK, OFFPEAK, \
     WEEKDAY_OFFPEAK, \
     WEEKEND_OFFPEAK, \
@@ -12,8 +13,6 @@ from core.time_period.load_shape import BASE, PEAK, OFFPEAK, \
     HOURS, \
     WEEKDAY_HOURS, \
     NEVER_LS
-from core.time_period.load_shaped_date_range import LoadShapedDateRange, \
-    NEVER_LSDR
 
 
 class LoadShapedDateRangeTestCase(unittest.TestCase):
@@ -42,14 +41,17 @@ class LoadShapedDateRangeTestCase(unittest.TestCase):
         self.assertEqual(self.sat_base.date_range, self.sat)
         self.assertEqual(self.sat_base.load_shape, BASE)
 
+    def test_offset(self):
+        self.assertEqual(self.sat_peak.offset(), self.sun_peak)
+
     def test_null(self):
         null = LoadShapedDateRange(self.sat, PEAK)
         self.assertEqual(null.duration, 0)
 
     def test_duration(self):
-        self.assertEqual(self.dec_peak.duration, 10.5)
-        self.assertEqual(self.dec_offpeak.duration, 20.5)
-        self.assertAlmostEqual(self.jan_efa1.duration, 31 * 4 / 24)
+        self.assertEqual(self.dec_peak.duration, 10.5 * DAY)
+        self.assertEqual(self.dec_offpeak.duration, 20.5 * DAY)
+        self.assertTrue(abs(self.jan_efa1.duration - 31 * 4 / 24 * DAY) < 1e-10 * DAY)
 
         # dec_12 has 10 weekend-days and 21 weekdays
         expected = {BASE: 31,
@@ -65,7 +67,7 @@ class LoadShapedDateRangeTestCase(unittest.TestCase):
                     WEEKDAY_HOURS[2]: 21 / 24}
         for load_shape, expected in expected.items():
             lsdr = LoadShapedDateRange('2012-M12', load_shape)
-            self.assertAlmostEqual(lsdr.duration, expected)
+            self.assertTrue(abs(lsdr.duration - expected * DAY) < 1e-10 * DAY)
 
     def test_eq(self):
         self.assertNotEqual(self.sat, self.sat_offpeak)

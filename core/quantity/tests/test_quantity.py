@@ -1,9 +1,10 @@
 from core.quantity.quantity import UnitError, _AbstractUnit, _BaseUnit, _DerivedUnit, Unit, Quantity, \
     _MWH, MWH, _THERM, THERM, DAY, HOUR, MW, _TONNE, TONNE, MMBTU, KWH, MTHERM, _BBL, BBL, \
-    _PENCE, PENCE, _GBP, GBP, _EUR, EUR, _USD, USD, MWH_PER_THERM, DIMENSIONLESS, \
+    _PENCE, PENCE, _GBP, GBP, _EUR, EUR, _USD, USD, MWH_PER_THERM, DIMENSIONLESS, unique_unit, standardise, \
     mean, ones, array, amax, empty, reshape, concatenate, var, floor, ceil, arange, zeros, maximum, minimum
 
 import numpy as np
+import datetime as dt
 import unittest
 
 
@@ -865,6 +866,38 @@ class QuantityTestCase(unittest.TestCase):
 
 class FreeStandingQuantityFunctionsTestCase(unittest.TestCase):
 
+    def test_standardise(self):
+        self.assertEqual(standardise([1 * GBP, 12 * GBP]), [1 * GBP, 12 * GBP])
+        self.assertEqual(standardise((Quantity([1, 2, 3], GBP), Quantity([100, 200, 300], PENCE))),
+                         (Quantity([1, 2, 3], GBP), Quantity([1, 2, 3], GBP)))
+        self.assertEqual(standardise({'a': Quantity(1, GBP), 'b': Quantity(2, GBP)}),
+                         {'a': Quantity(1, GBP), 'b': Quantity(2, GBP)})
+        test_dict = {100: Quantity(1, GBP), 200: Quantity(200, PENCE)}
+        self.assertEqual(standardise(test_dict), {100: Quantity(1, GBP), 200: Quantity(2, GBP)})
+        test_dict = {"feel": Quantity([1, 2, 3], PENCE / THERM), "good": Quantity([2.2, 3.4], GBP / MWH)}
+        self.assertEqual(standardise(test_dict),
+                         {"feel": Quantity([0.01 / MWH_PER_THERM,
+                                            0.02 / MWH_PER_THERM,
+                                            0.03 / MWH_PER_THERM], GBP / MWH),
+                          "good": Quantity([2.2, 3.4], GBP / MWH)})
+        standard = standardise(test_dict, PENCE / THERM)
+        expected_values = [Quantity([1, 2, 3], PENCE / THERM),
+                           Quantity([220 * MWH_PER_THERM, 340 * MWH_PER_THERM], PENCE / THERM)]
+        self.assertTrue(np.all(abs(standard["feel"] - Quantity([1, 2, 3], PENCE / THERM)) < 1e-10 * PENCE / THERM))
+        self.assertTrue(np.all(abs(standard["good"] - Quantity([220 * MWH_PER_THERM,
+                                                                340 * MWH_PER_THERM],
+                                                               PENCE / THERM)) < 1e-10 * PENCE / THERM))
+        with self.assertRaises(UnitError):
+            standardise([1 * GBP, 1 * MWH])
+        with self.assertRaises(ValueError):
+            standardise("cats")
+        with self.assertRaises(ValueError):
+            standardise(1 * PENCE / THERM)
+        with self.assertRaises(UnitError):
+            standardise([100 * PENCE, 1 * GBP], MWH)
+
+
+
     def test_concatenate(self):
         a = GBP * 1
         self.assertEqual(concatenate((a, GBP * 2, GBP * 3)), array((1, 2, 3), GBP))
@@ -898,3 +931,15 @@ class FreeStandingQuantityFunctionsTestCase(unittest.TestCase):
     def test_arange(self):
         expected = Quantity(np.arange(0.1, 10.1, 1.1), THERM)
         self.assertEqual(arange(0.1 * THERM, 10.1 * THERM, 1.1 * THERM), expected)
+
+    def test_unique_units(self):
+        scalar_quotes = {dt.date(2014, 1, 1): 1.25,
+                         dt.date(2014, 4, 1): 1.26}
+        self.assertEqual(unique_unit(scalar_quotes.values()), DIMENSIONLESS)
+        consistent_quotes = {dt.date(2014, 1, 1): 1.25 * PENCE,
+                             dt.date(2014, 4, 1): 1.26 * PENCE}
+        self.assertEqual(unique_unit(consistent_quotes.values()), PENCE)
+        inconsistent_quotes = {dt.date(2014, 1, 1): 1.25 * PENCE,
+                               dt.date(2014, 4, 1): 1.26 * THERM}
+        with self.assertRaises(UnitError):
+            unique_unit(inconsistent_quotes.values())

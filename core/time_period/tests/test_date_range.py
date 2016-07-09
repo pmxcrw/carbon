@@ -3,7 +3,8 @@ import unittest
 
 from pandas.util.testing import assertRaises
 
-from core.time_period.date_range import DateRange, _RangeType, _NeverType,\
+from core.quantity.quantity import DAY
+from core.time_period.date_range import DateRange, LoadShapedDateRange, _RangeType, _NeverType,\
     _AlwaysType, _DayType, _WeekType, _MonthType, _QuarterType, _YearType, _GasYearType,\
     _SummerType, _WinterType
 
@@ -51,6 +52,10 @@ class DateRangeGenericTest(unittest.TestCase):
         # doesn't need repeating for other strategy objects
         self.assertTrue(dt.date(2015, 5, 20) in self.test_DR1)
         self.assertFalse(dt.date(1978, 5, 20) in self.test_DR1)
+        self.assertTrue(DateRange("2015") in self.test_DR1)
+        self.assertTrue(LoadShapedDateRange("2015", "Peak") in self.test_DR1)
+        self.assertFalse(LoadShapedDateRange("2020", "Offpeak") in self.test_DR1)
+        self.assertFalse(DateRange("3030") in self.test_DR1)
 
     def test_eq(self):
         # doesn't need repeating for other strategy objects
@@ -68,7 +73,7 @@ class DateRangeGenericTest(unittest.TestCase):
 
     def test_iter(self):
         # doesn't need repeating for other strategy objects
-        output = [dt.date(2000, 1, i+1) for i in range(31)]
+        output = [DateRange(dt.date(2000, 1, i+1), range_type='d') for i in range(31)]
         start = dt.date(2000, 1, 1)
         end = dt.date(2000, 1, 31)
         self.assertEqual(output, [date for date in DateRange(start, end)])
@@ -86,6 +91,9 @@ class DateRangeGenericTest(unittest.TestCase):
         e = DateRange('never')
         self.assertEqual(e, a.intersection(d))
         self.assertFalse(e.intersects(a))
+        d = LoadShapedDateRange("2015-M4", "Peak")
+        self.assertTrue(a.intersects(d))
+        self.assertEqual(LoadShapedDateRange("2015-M4", "Peak"), a.intersection(d))
 
     def test_difference(self):
         # doesn't need repeating for other strategy objects
@@ -99,6 +107,12 @@ class DateRangeGenericTest(unittest.TestCase):
         self.assertEqual((e, f), a.difference(d))
         g = DateRange(dt.date(2016, 4, 1), dt.date(2016, 12, 31))
         self.assertEqual((f, g), a.difference(c))
+        h = LoadShapedDateRange('2016-SUM', 'Peak')
+        self.assertEqual((LoadShapedDateRange(c), LoadShapedDateRange('2016-SUM', 'Offpeak'), LoadShapedDateRange(d)),
+                         a.difference(h))
+
+    def test_duration(self):
+        self.assertEqual(DateRange('2016').duration, 366 * DAY)
 
     def test_weekend_and_weekday_duration(self):
         # doesn't need repeating for other strategy objects

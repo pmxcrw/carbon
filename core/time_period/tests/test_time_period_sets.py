@@ -1,11 +1,10 @@
 import datetime as dt
 import unittest
 
-from core.time_period.date_range import DateRange
+from core.time_period.date_range import DateRange, LoadShapedDateRange
 from core.time_period.load_shape import LoadShape, BASE, PEAK, OFFPEAK, \
     DAYTIME, NIGHTTIME, WEEKDAY, WEEKEND, WEEKEND_OFFPEAK, WEEKDAY_OFFPEAK, WEEKEND_PEAK
 from core.time_period.time_period_sets import TimePeriodSet, _LoadShapeType, _DateRangeType, _LoadShapedDateRangeType
-from core.time_period.load_shaped_date_range import LoadShapedDateRange
 
 
 class TestTimePeriodSet(unittest.TestCase):

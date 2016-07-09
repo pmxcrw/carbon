@@ -854,6 +854,34 @@ class Quantity(object):
         return Quantity(np.mean(self.value), self.unit)
 
 
+# Convenience functions
+
+
+def unit(quantity):
+    return getattr(quantity, "unit", DIMENSIONLESS)
+
+
+def value(quantity):
+    return getattr(quantity, "value", quantity)
+
+
+def unique_unit(iterable):
+    """
+    Checks that the units in an iterable are consistent and returns it. Ignores any plain numbers.
+
+    :param iterable: Quantities or numbers
+    :return: Unit or UnitError
+    """
+    units = set(unit(x) for x in iterable)
+    units = units.difference({DIMENSIONLESS})
+    if len(units) == 0:
+        return DIMENSIONLESS
+    if len(units) == 1:
+        return units.pop()
+    else:
+        raise UnitError("Mixed units: {}".format(units))
+
+
 # Numpy functions mapped to Units
 def ones(length, unit=Unit([],[])):
     return Quantity(np.ones(length), unit)
@@ -920,6 +948,48 @@ def minimum(*args):
 def arange(start, stop, step):
     assert start.unit == stop.unit == step.unit
     return Quantity(np.arange(start.value, stop.value, step.value), start.unit)
+
+
+def standardise(collection, unit=None):
+    """
+    If the collection has quantities with compatible units, they are converted to the common base unit.
+    Optionallly, if a unit is specified, the quantities are converted to this unit, provided it's compatible.
+
+    :param collection:
+    :param unit:
+    :return:
+    """
+
+    try:
+        if unit:
+            base_unit = unit
+        else:
+            if isinstance(collection, (list, tuple, set)):
+                units = set(quantity.unit for quantity in collection)
+            elif isinstance(collection, dict):
+                units = set(quantity.unit for quantity in collection.values())
+            else:
+                raise ValueError("can only standardise lists, tuples, sets or dicts")
+            if len(units) == 1:
+                base_unit = units.pop()
+            elif len(units) != 1:
+                base_units = set(unit.reference_unit.unit for unit in units)
+                if len(base_units) == 1:
+                    base_unit = base_units.pop()
+                else:
+                    raise UnitError("can only standardise list of Quantities with equivalent units")
+        if isinstance(collection, list):
+            return [quantity.convert(base_unit) for quantity in collection]
+        if isinstance(collection, tuple):
+            return tuple(quantity.convert(base_unit) for quantity in collection)
+        if isinstance(collection, set):
+            return set(quantity.convert(base_unit) for quantity in collection)
+        if isinstance(collection, dict):
+            for key, value in collection.items():
+                collection[key] = value.convert(base_unit)
+            return collection
+    except AttributeError:
+        raise ValueError("can only standardise collection of Quantities")
 
 
 def concatenate(quantity_list, axis=0):

@@ -3,10 +3,44 @@
 import datetime as dt
 import math
 import pandas as pd
+from abc import abstractmethod, abstractproperty
 from core.time_period.time_utilities import workdays, START_OF_WORLD, END_OF_WORLD
+from core.time_period.load_shape import LoadShape, BASE
+from core.quantity.quantity import DAY
+import datetime as dt
 
 
-class DateRange(object):
+class AbstractDateRange(object):
+
+    def discounted_duration(self, settlement_rule, discount_curve):
+        """calculates the discounted duration for use in curve construction"""
+        return settlement_rule(self, discount_curve).discounted_duration
+
+    def settlement_dates(self, settlement_rule):
+        """calculates the settlement dates associated with a date range"""
+        return settlement_rule(self, None).settlement_dates
+
+    @abstractproperty
+    def duration(self):
+        """calculates the duration of the date range"""
+
+    @abstractmethod
+    def split_by_range_type(self, range_type):
+        """splits the date range into components each having the desired range_type"""
+
+    @abstractproperty
+    def split_by_month(self):
+        """convenience property - like split_by_range_type method where range_type is monthly."""
+
+    @abstractproperty
+    def split_by_quarter(self):
+        """convenience property - like split_by_range_type method where range_type is quarterly."""
+
+    @abstractmethod
+    def offset(self, shift=1):
+        """offsets a date_range (e.g. a monthly date range is shifted to the next month)"""
+
+class DateRange(AbstractDateRange):
     """
     Class to represent a range of dates.
     Closed under operations of intersection
@@ -36,16 +70,9 @@ class DateRange(object):
                     raise TypeError(msg)
             elif range_type:
                 # this is case 2
-                range_type = range_type.lower().strip()
-                for known_range_type in _RangeType.__subclasses__():
-                    if range_type in known_range_type.aliases:
-                        self.start, self.end = known_range_type.bound(start)
-                        self._cache_interval = known_range_type
-                        break
-                else:
-                    msg = "range type unknown, should be a member of the"
-                    msg += " alias set for a subclass of RangeType object"
-                    raise ValueError(msg)
+                range_type = DateRange._parse_range_type(range_type)
+                self.start, self.end = range_type.bound(start)
+                self._cache_interval = range_type
             else:
                 msg = "if a start date is given then either an end date or "
                 msg += " range_type must be given"
@@ -67,6 +94,19 @@ class DateRange(object):
                 else:
                     msg = "unable to parse {} into DateRange".format(start)
                     raise ValueError(msg)
+
+    @staticmethod
+    def _parse_range_type(range_type):
+        if range_type in _RangeType.__subclasses__():
+            return range_type
+        range_type = range_type.lower().strip()
+        for known_range_type in _RangeType.__subclasses__():
+            if range_type in known_range_type.aliases:
+                return known_range_type
+        msg = "range type unknown, should be a member of the"
+        msg += " alias set for a subclass of RangeType object"
+        raise ValueError(msg)
+
 
     @property
     def range_type(self):
@@ -109,7 +149,7 @@ class DateRange(object):
     def __contains__(self, lhs):
         if isinstance(lhs, dt.date):
             return self.start <= lhs <= self.end
-        elif isinstance(lhs, DateRange):
+        elif isinstance(lhs, (DateRange, LoadShapedDateRange)):
             return self.start <= lhs.start and lhs.end <= self.end
 
     def __eq__(self, rhs):
@@ -128,23 +168,28 @@ class DateRange(object):
     def __iter__(self):
         current = self.start
         while current <= self.end:
-            yield current
+            yield DateRange(current, range_type='d')
             current += dt.timedelta(1)
 
     def intersection(self, other):
         start = max(self.start, other.start)
         end = min(self.end, other.end)
-        return DateRange(start, end)
+        date_range = DateRange(start, end)
+        if isinstance(other, DateRange):
+            return date_range
+        return LoadShapedDateRange(date_range, other.load_shape)
 
     def intersects(self, other):
         return self.start <= other.end and other.start <= self.end
 
     def difference(self, other):
         """
-        Returns a pair of DateRange objects. The first is all days in
+        Returns a pair of DateRange objects or LSDR's. The first is all days in
         self which are before other. The second is all days in self
         which are after other
         """
+        if isinstance(other, LoadShapedDateRange):
+            return LoadShapedDateRange(self, BASE).difference(other)
         diff = []
         if self.start < other.start:
             diff.append(DateRange(self.start, other.start - dt.timedelta(1)))
@@ -155,6 +200,14 @@ class DateRange(object):
         else:
             diff.append(DateRange("never"))
         return tuple(diff)
+
+    @property
+    def duration(self):
+        """Returns the number of days in self"""
+        if self.start <= self.end:
+            return (self.end - self.start + dt.timedelta(1)).days * DAY
+        else:
+            return 0 * DAY
 
     @property
     def weekday_and_weekend_duration(self):
@@ -168,6 +221,7 @@ class DateRange(object):
             return 0, 0
 
     def split_by_range_type(self, range_type):
+        range_type = DateRange._parse_range_type(range_type)
         try:
             start_range = range_type.date_range(self.start)
         except ValueError:
@@ -208,6 +262,9 @@ class DateRange(object):
     def split_by_month(self):
         return self.split_by_range_type(_MonthType)
 
+    def expand(self, range_type):
+        """Expands the DateRange to the given range_type"""
+        return DateRange(self.start, range_type=range_type)
 
 class _RangeType(object):
 
@@ -750,3 +807,141 @@ def date_ranges(dates):
 
 # precompute NEVER_DATE_RANGE for use in other modules efficiently
 NEVER_DR = DateRange(END_OF_WORLD, START_OF_WORLD)
+
+
+class LoadShapedDateRange(AbstractDateRange):
+
+    def __init__(self, date_range, load_shape=BASE):
+        if isinstance(date_range, str):
+            date_range = DateRange(date_range.lower().strip())
+        if isinstance(load_shape, str):
+            load_shape = LoadShape(load_shape.lower().strip())
+        if isinstance(date_range, DateRange) and\
+           isinstance(load_shape, LoadShape):
+            if date_range == NEVER_DR or load_shape == LoadShape(0):
+                self.date_range = NEVER_DR
+                self.load_shape = LoadShape(0)
+            else:
+                self.date_range = date_range
+                self.load_shape = load_shape
+        else:
+            msg = "inputs must be a DateRange object and LoadShape"
+            msg += " object, or strings that can be parsed into these"
+            raise ValueError(msg)
+
+    def __repr__(self):
+        return "LoadShapedDateRange(date_range={}, load_shape={})"\
+                .format(self.date_range, self.load_shape)
+
+    def __eq__(self, rhs):
+        if self.__class__ == rhs.__class__:
+            eq = self.date_range == rhs.date_range
+            eq &= self.load_shape == rhs.load_shape
+            return eq
+        else:
+            return False
+
+    def __hash__(self):
+        return hash((self.date_range, self.load_shape))
+
+    @property
+    def start(self):
+        return self.date_range.start
+
+    @property
+    def end(self):
+        return self.date_range.end
+
+    def offset(self, shift=1):
+        return LoadShapedDateRange(self.date_range.offset(shift), self.load_shape)
+
+    @property
+    def duration(self):
+        """returns the duration in days"""
+        weekdays, weekends = self.date_range.weekday_and_weekend_duration
+        duration = weekdays * self.load_shape.weekday_load_factor
+        duration += weekends * self.load_shape.weekend_load_factor
+        return duration * DAY
+
+    def intersection(self, other):
+        if self.load_shape.intersects(other.load_shape):
+            if self.date_range.intersects(other.date_range):
+                date_range = self.date_range.intersection(other.date_range)
+                load_shape = self.load_shape.intersection(other.load_shape)
+                return LoadShapedDateRange(date_range, load_shape)
+        return NEVER_LSDR
+
+    def intersects(self, other):
+        if self.load_shape.intersects(other.load_shape):
+            if self.date_range.intersects(other.date_range):
+                # this is expensive to compute, so first test the basic
+                # intersections to see if we nest inside the cheaper
+                # calculations and return false sooner if we can
+                return self.intersection(other).duration > 0
+        return False
+
+    def equivalent(self, rhs):
+        """
+        Tests whether two LoadShapedDateRange objects represent the same set of hours. Computationally expensive
+        """
+        intersection = self.intersection(rhs)
+        duration = self.duration
+        if duration != intersection.duration:
+            return False
+        else:
+            return duration == rhs.duration
+
+    def __contains__(self, lhs):
+        if isinstance(lhs, (dt.date, DateRange)):
+            if lhs in self.date_range:
+                return self.load_shape == BASE
+        elif lhs.date_range in self.date_range:
+                return lhs.load_shape in self.load_shape
+        else:
+            return False
+
+    def split_by_range_type(self, range_type):
+        date_ranges = self.date_range.split_by_range_type(range_type)
+        return [LoadShapedDateRange(dr, self.load_shape) for dr in date_ranges]
+
+    @property
+    def split_by_month(self):
+        date_ranges = self.date_range.split_by_month
+        return [LoadShapedDateRange(dr, self.load_shape) for dr in date_ranges]
+
+    @property
+    def split_by_quarter(self):
+        date_ranges = self.date_range.split_by_quarter
+        return [LoadShapedDateRange(dr, self.load_shape) for dr in date_ranges]
+
+    def expand(self, range_type):
+        """Expands the DateRange to the given range_type"""
+        return LoadShapedDateRange(self.date_range.expand(range_type), self.load_shape)
+
+    def __iter__(self):
+        week_hours = self.load_shape.weekday_load_factor
+        weekend_hours = self.load_shape.weekend_load_factor
+        for daily_date_range in self.date_range:
+            date = daily_date_range.start
+            weekday = date.weekday()
+            if weekday < 5 and week_hours:
+                yield LoadShapedDateRange(DateRange(date, date), self.load_shape)
+            elif weekday > 4 and weekend_hours:
+                yield LoadShapedDateRange(DateRange(date, date), self.load_shape)
+
+    def difference(self, other):
+        """
+        Returns a tripple of DateRange objects:
+
+        1) The days in self which are before other (with self's loadshape)
+        2) The days in both self and other, with load shape of self - other
+        3) The days in self which are after other (with self's loadshape)
+        """
+        start, end = self.date_range.difference(other.date_range)
+        mid = self.date_range.intersection(other.date_range)
+        load_shape = self.load_shape.difference(other.load_shape)
+        return (LoadShapedDateRange(start, self.load_shape),
+                LoadShapedDateRange(mid, load_shape),
+                LoadShapedDateRange(end, self.load_shape))
+
+NEVER_LSDR = LoadShapedDateRange(NEVER_DR, LoadShape(0))
