@@ -90,6 +90,10 @@ class LoadShapedDateRangeTestCase(unittest.TestCase):
                          NEVER_LSDR)
         self.assertEqual(self.dec_offpeak.intersection(self.fri_base),
                          self.fri_offpeak)
+        self.assertEqual(self.fri_peak.intersection(OFFPEAK), NEVER_LSDR)
+        self.assertEqual(OFFPEAK.intersection(self.fri_peak), NEVER_LSDR)
+        self.assertEqual(self.fri_base.intersection(OFFPEAK), self.fri_offpeak)
+        self.assertEqual(OFFPEAK.intersection(self.fri_base), self.fri_offpeak)
 
     def test_intersects(self):
         self.assertFalse(self.sat_base.intersects(self.sun_peak))
@@ -97,6 +101,10 @@ class LoadShapedDateRangeTestCase(unittest.TestCase):
         self.assertTrue(self.fri_peak.intersects(self.fri_base))
         self.assertFalse(self.fri_peak.intersects(self.fri_offpeak))
         self.assertFalse(self.sat_peak.intersects(self.sat_base))
+        self.assertTrue(self.fri_base.intersects(OFFPEAK))
+        self.assertFalse(self.fri_peak.intersects(OFFPEAK))
+        self.assertTrue(OFFPEAK.intersects(self.fri_base))
+        self.assertFalse(OFFPEAK.intersects(self.fri_peak))
         # intersection is sat_peak, which has a duration of zero
         # intersects method only returns true if duration is non-zero
 

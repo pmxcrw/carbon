@@ -16,6 +16,7 @@ class TimePeriodSet(frozenset):
             time_period_set = super().__new__(cls, collection)
             time_period_set.default_load_shape = None
             time_period_set.time_period_type = None
+            time_period_set._partition_cache = None
             return time_period_set
         elif time_period_type is None:
             for candidate_type in _TimePeriodType.__subclasses__():
@@ -28,6 +29,7 @@ class TimePeriodSet(frozenset):
                     time_period_set = super().__new__(cls, collection)
                     time_period_set.time_period_type = time_period_type
                     time_period_set.default_load_shape = default_load_shape
+                    time_period_set._partition_cache = {}
                     return time_period_set
             else:
                 msg = "time_period_type not provided, and collection isn't all of the same"
@@ -58,6 +60,7 @@ class TimePeriodSet(frozenset):
             time_period_set = super().__new__(cls, parsed_collection)
             time_period_set.time_period_type = time_period_type
             time_period_set.default_load_shape = default_load_shape
+            time_period_set._partition_cache = None
             return time_period_set
 
     def __hash__(self):
@@ -89,34 +92,49 @@ class TimePeriodSet(frozenset):
         return TimePeriodSet(super(TimePeriodSet, self).union(other), time_period_type, default_load_shape)
 
     def intersects(self, other):
-        if type(other) == self.time_period_type.time_period_class:
+        if isinstance(other, (LoadShapedDateRange, DateRange, LoadShape)):
             return any(item.intersects(other) for item in self)
-        elif type(other) == TimePeriodSet and other.time_period_type == self.time_period_type:
+        elif type(other) == TimePeriodSet:
             return any(item.intersects(other_item) for item in self for other_item in other)
-        else:
-            raise TypeError("intersects only implemented for homogeneous time period types")
 
     def intersection(self, other):
-        if type(other) == self.time_period_type.time_period_class:
+        # promotion_dict is used to find the correct time_period_type for the intersection
+        promotion_dict = {frozenset({LoadShape, LoadShape}): _LoadShapeType,
+                          frozenset({LoadShape, DateRange}): _LoadShapedDateRangeType,
+                          frozenset({LoadShape, LoadShapedDateRange}): _LoadShapedDateRangeType,
+                          frozenset({DateRange, DateRange}): _DateRangeType,
+                          frozenset({DateRange, LoadShapedDateRange}): _LoadShapedDateRangeType,
+                          frozenset({LoadShapedDateRange, LoadShapedDateRange}): _LoadShapedDateRangeType}
+        if isinstance(other, (DateRange, LoadShape, LoadShapedDateRange)):
             collection = [item.intersection(other) for item in self if item.intersects(other)]
-            return TimePeriodSet(collection, self.time_period_type, self.default_load_shape)
-        elif type(other) == TimePeriodSet and other.time_period_type == self.time_period_type:
+            time_period_type = promotion_dict[frozenset({self.time_period_type.time_period_class, type(other)})]
+            return TimePeriodSet(collection, time_period_type, self.default_load_shape)
+        elif isinstance(other, TimePeriodSet):
             collection = [item.intersection(other_item) for item in self for other_item in other
                           if item.intersects(other_item)]
-            return TimePeriodSet(collection, self.time_period_type, self.default_load_shape)
+            lhs_time_period_class = self.time_period_type.time_period_class
+            rhs_time_period_class = other.time_period_type.time_period_class
+            time_period_type = promotion_dict[frozenset({lhs_time_period_class, rhs_time_period_class})]
+            return TimePeriodSet(collection, time_period_type, self.default_load_shape)
         else:
             raise TypeError("intersection only implemented for homogeneous time period types")
 
     @property
     def partition(self):
-        if self.time_period_type:
-            return self.time_period_type.partition(self)
-        else:
-            raise TypeError("partition not defined for empty TimePeriodSet")
+        if not self._partition_cache:
+            if self.time_period_type:
+                self._partition_cache = self.time_period_type.partition(self)
+            else:
+                raise TypeError("partition not defined for empty TimePeriodSet")
+        return self._partition_cache
 
     def partition_intersecting(self, other):
         """Given a time period (date range etc.) to cover, returns the set of equivalence classes of the TimePeriodSet
-        which intersect this time period. The time period must be homogenous with the items in TimePeriodSet"""
+        which intersect this time period. The time period must be homogenous with the items in TimePeriodSet
+
+        This is used e.g. when calculating a forward price. Ther partitions are the keys for known non-intersecting
+        prices. So partition_intersecting lets us find all of the relevant known prices which provide information
+        relevant to the requested forward price."""
         return set(partition for partition in self.partition if partition.intersects(other))
 
 

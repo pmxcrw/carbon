@@ -155,17 +155,30 @@ class TestTimePeriodSet(unittest.TestCase):
     def test_intersects(self):
         self.assertTrue(self.drs.intersects(DateRange('2017-WIN')))
         self.assertFalse(self.drs.intersects(DateRange('2017-SUM')))
-        with self.assertRaises(TypeError):
-            self.drs.intersects(BASE)
+        self.assertTrue(self.drs.intersects(PEAK))
         self.assertTrue(self.drs.intersects(TimePeriodSet({'2017-WIN', '2020'}, DateRange)))
         self.assertFalse(self.drs.intersects(TimePeriodSet({'2017-SUM', '2020'}, DateRange)))
-        with self.assertRaises(TypeError):
-            self.drs.intersects(TimePeriodSet({'2017-WIN', '2020'}, LoadShapedDateRange, BASE))
+        self.assertTrue(self.drs.intersects(TimePeriodSet({'2017-WIN', '2020'}, LoadShapedDateRange, PEAK)))
 
     def test_intersection(self):
         expected = TimePeriodSet({'2018-Q1'}, DateRange)
         self.assertEqual(expected, self.drs.intersection(DateRange('2017-WIN')))
         self.assertEqual(expected, self.drs.intersection(TimePeriodSet({'2017-WIN', '2020'}, DateRange)))
+        expected_LSDR_set = TimePeriodSet({LoadShapedDateRange('2018-Q1', PEAK)}, LoadShapedDateRange)
+        self.assertEqual(expected_LSDR_set, expected.intersection(PEAK))
+        test_LSDR_set = TimePeriodSet({LoadShapedDateRange('2017-WIN', PEAK), LoadShapedDateRange('2020', OFFPEAK)})
+        self.assertEqual(expected_LSDR_set, self.drs.intersection(test_LSDR_set))
+        self.assertEqual(expected_LSDR_set, test_LSDR_set.intersection(self.drs))
+        self.assertEqual(expected_LSDR_set, self.drs.intersection(LoadShapedDateRange('2017-WIN', PEAK)))
+        expected_LSDR_set = TimePeriodSet({LoadShapedDateRange('2018-Q1', PEAK),
+                                           LoadShapedDateRange('2018-Q1', OFFPEAK)})
+        self.assertEqual(expected_LSDR_set, expected.intersection(TimePeriodSet({PEAK, OFFPEAK})))
+        self.assertEqual(expected_LSDR_set, TimePeriodSet({PEAK, OFFPEAK}).intersection(expected))
+        test_LSDR_set = TimePeriodSet({LoadShapedDateRange('2017-WIN', PEAK),
+                                       LoadShapedDateRange('2017-WIN', OFFPEAK),
+                                       LoadShapedDateRange('2020', BASE)})
+        self.assertEqual(expected_LSDR_set, self.drs.intersection(test_LSDR_set))
+        self.assertEqual(expected_LSDR_set, test_LSDR_set.intersection(self.drs))
         expected = TimePeriodSet([])
         self.assertEqual(expected, self.drs.intersection(DateRange('2017-SUM')))
         self.assertEqual(expected, self.drs.intersection(TimePeriodSet({'2017-SUM', '2020'}, DateRange)))

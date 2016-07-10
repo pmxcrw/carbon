@@ -172,18 +172,19 @@ class DateRange(AbstractDateRange):
             current += dt.timedelta(1)
 
     def intersection(self, other):
-        start = max(self.start, other.start)
-        end = min(self.end, other.end)
-        date_range = DateRange(start, end)
-        if isinstance(other, DateRange):
-            return date_range
-        if isinstance(other, LoadShapedDateRange):
-            return LoadShapedDateRange(date_range, other.load_shape)
         if isinstance(other, LoadShape):
-            return LoadShapedDateRange(date_range, other)
+            return LoadShapedDateRange(self, other)
+        if isinstance(other, DateRange):
+            start = max(self.start, other.start)
+            end = min(self.end, other.end)
+            return DateRange(start, end)
+        if isinstance(other, LoadShapedDateRange):
+            return other.intersection(self)
         raise ValueError("can only calculate intersection with another time_period")
 
     def intersects(self, other):
+        if isinstance(other, LoadShape):
+            return True
         return self.start <= other.end and other.start <= self.end
 
     def difference(self, other):
@@ -869,10 +870,16 @@ class LoadShapedDateRange(AbstractDateRange):
         return duration * DAY
 
     def intersection(self, other):
-        if isinstance(other, DateRange):
-            other = LoadShapedDateRange(other, BASE)
         if isinstance(other, LoadShape):
-            other = LoadShapedDateRange(ALWAYS_DR, other)
+            if self.load_shape.intersects(other):
+                load_shape = self.load_shape.intersection(other)
+                return LoadShapedDateRange(self.date_range, load_shape)
+            return NEVER_LSDR
+        if isinstance(other, DateRange):
+            if self.date_range.intersects(other):
+                date_range = self.date_range.intersection(other)
+                return LoadShapedDateRange(date_range, self.load_shape)
+            return NEVER_LSDR
         if self.load_shape.intersects(other.load_shape):
             if self.date_range.intersects(other.date_range):
                 date_range = self.date_range.intersection(other.date_range)
@@ -881,15 +888,14 @@ class LoadShapedDateRange(AbstractDateRange):
         return NEVER_LSDR
 
     def intersects(self, other):
-        if isinstance(other, DateRange):
-            other = LoadShapedDateRange(other, BASE)
         if isinstance(other, LoadShape):
-            other = LoadShapedDateRange(ALWAYS_DR, other)
+            return self.load_shape.intersects(other)
+        if isinstance(other, DateRange):
+            return self.date_range.intersects(other)
         if self.load_shape.intersects(other.load_shape):
             if self.date_range.intersects(other.date_range):
                 # this is expensive to compute, so first test the basic
-                # intersections to see if we nest inside the cheaper
-                # calculations and return false sooner if we can
+                # intersections and return false sooner if we can
                 return self.intersection(other).duration > 0
         return False
 

@@ -63,14 +63,18 @@ class LoadShape(object):
         return int("0b" + "".join(reversed(bitmap)), 2)
 
     def intersects(self, other):
-        return self.bitmap & other.bitmap
+        if isinstance(other, LoadShape):
+            return self.bitmap & other.bitmap
+        return other.intersects(self)
 
     def intersection(self, other, name=None):
         """
         Creates a new LoadShape with intersecting load shape
         name can optionally be provided and passed to the new object
         """
-        return LoadShape(self.bitmap & other.bitmap, name)
+        if isinstance(other, LoadShape):
+            return LoadShape(self.bitmap & other.bitmap, name)
+        return other.intersection(self)
 
     def __contains__(self, lhs):
         return self.intersects(lhs) and self.intersection(lhs) == lhs

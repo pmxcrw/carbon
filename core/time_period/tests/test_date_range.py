@@ -7,6 +7,7 @@ from core.quantity.quantity import DAY
 from core.time_period.date_range import DateRange, LoadShapedDateRange, _RangeType, _NeverType,\
     _AlwaysType, _DayType, _WeekType, _MonthType, _QuarterType, _YearType, _GasYearType,\
     _SummerType, _WinterType
+from core.time_period.load_shape import PEAK
 
 
 class DateRangeGenericTest(unittest.TestCase):
@@ -83,10 +84,22 @@ class DateRangeGenericTest(unittest.TestCase):
         a = DateRange('2015-Q2')
         b = DateRange(dt.date(2015, 6, 1), dt.date(2015, 12, 31))
         c = DateRange('2015-M6')
+        d = LoadShapedDateRange(b, PEAK)
+        e = LoadShapedDateRange(c, PEAK)
+        f = PEAK
         self.assertEqual(c, a.intersection(b))
         self.assertEqual(c, b.intersection(a))
+        self.assertEqual(e, a.intersection(d))
+        self.assertEqual(e, d.intersection(a))
+        self.assertEqual(d, b.intersection(f))
+        self.assertEqual(d, f.intersection(b))
         self.assertTrue(a.intersects(b))
         self.assertTrue(b.intersects(a))
+        self.assertTrue(a.intersects(d))
+        self.assertTrue(d.intersects(a))
+        self.assertTrue(a.intersects(f))
+        self.assertTrue(f.intersects(a))
+
         d = DateRange('2016')
         e = DateRange('never')
         self.assertEqual(e, a.intersection(d))
