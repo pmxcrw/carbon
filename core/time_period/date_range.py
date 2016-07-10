@@ -177,7 +177,11 @@ class DateRange(AbstractDateRange):
         date_range = DateRange(start, end)
         if isinstance(other, DateRange):
             return date_range
-        return LoadShapedDateRange(date_range, other.load_shape)
+        if isinstance(other, LoadShapedDateRange):
+            return LoadShapedDateRange(date_range, other.load_shape)
+        if isinstance(other, LoadShape):
+            return LoadShapedDateRange(date_range, other)
+        raise ValueError("can only calculate intersection with another time_period")
 
     def intersects(self, other):
         return self.start <= other.end and other.start <= self.end
@@ -807,6 +811,7 @@ def date_ranges(dates):
 
 # precompute NEVER_DATE_RANGE for use in other modules efficiently
 NEVER_DR = DateRange(END_OF_WORLD, START_OF_WORLD)
+ALWAYS_DR = DateRange(START_OF_WORLD, END_OF_WORLD)
 
 
 class LoadShapedDateRange(AbstractDateRange):
@@ -864,6 +869,10 @@ class LoadShapedDateRange(AbstractDateRange):
         return duration * DAY
 
     def intersection(self, other):
+        if isinstance(other, DateRange):
+            other = LoadShapedDateRange(other, BASE)
+        if isinstance(other, LoadShape):
+            other = LoadShapedDateRange(ALWAYS_DR, other)
         if self.load_shape.intersects(other.load_shape):
             if self.date_range.intersects(other.date_range):
                 date_range = self.date_range.intersection(other.date_range)
@@ -872,6 +881,10 @@ class LoadShapedDateRange(AbstractDateRange):
         return NEVER_LSDR
 
     def intersects(self, other):
+        if isinstance(other, DateRange):
+            other = LoadShapedDateRange(other, BASE)
+        if isinstance(other, LoadShape):
+            other = LoadShapedDateRange(ALWAYS_DR, other)
         if self.load_shape.intersects(other.load_shape):
             if self.date_range.intersects(other.date_range):
                 # this is expensive to compute, so first test the basic
