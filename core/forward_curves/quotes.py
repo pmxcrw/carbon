@@ -1,19 +1,24 @@
-from core.quantity.quantity import Quantity, DAY, standardise, DIMENSIONLESS, GBP, PENCE, UnitError
-from core.time_period.time_period_sets import TimePeriodSet, DateRange
-from core.time_period.date_range import LoadShapedDateRange
-
-import numpy as np
-import datetime as dt
+from core.quantity.quantity import Quantity, standardise, UnitError
+from core.time_period.time_period_sets import TimePeriodSet
 
 
-class Quotes(object):
+class AbstractQuotes(object):
 
-    #TODO see if we need an abstract Quotes object
-    pass
-
-class ContinuousQuotes(Quotes):
     """
     Generic dictionary of quotes for continuous delivery periods, from which a forward curve can be built
+    """
+
+    def __init__(self, input_dict):
+        self.quotes = input_dict
+        try:
+            self.time_period_set = TimePeriodSet(input_dict.keys())
+        except ValueError:
+            raise ValueError("keys for quotes must be homogeneous DateRange or LoadShapedDateRange objects")
+
+
+class ContinuousQuotes(AbstractQuotes):
+    """
+    Generic dictionary of price quotes for continuous delivery periods, from which a forward curve can be built
     """
 
     def __init__(self, quotes_dict, settlement_rule, unit=None):
@@ -23,44 +28,41 @@ class ContinuousQuotes(Quotes):
             If the quotes_dict contains quantities then:
                 It tests for compatibility of the units. If mixed but compatible units are specified it converts
                 everything to the base unit.
-                If a unit is specified separately, it converts values to this unit;
+                If a unit is specified explicitly, it converts quantitites to this unit;
                 assuming it's compatible with given units.
 
         :param quotes_dict: a dictionary who's keys are DateRange or LoadShapedDateRange objects and who's values are
                             int, float or Quantity objects
         :param unit: a Unit, if required
         """
-        try:
-            self.time_period_set = TimePeriodSet(quotes_dict.keys())
-        except ValueError:
-            raise ValueError("keys for quotes must be homogeneous DateRange or LoadShapedDateRange objects")
+        super().__init__(quotes_dict)
         self.settlement_rule = settlement_rule
-        if self._contains_quantities(quotes_dict):
-            self.unit, self.quotes = self._parse_quantities(quotes_dict, unit)
+        if self._contains_quantities:
+            self.unit, self.quotes = self._parse_quantities(unit)
         elif not unit:
             raise ValueError("quotes have no units, and no unit is provided")
         else:
             self.unit = unit
-            self.quotes = quotes_dict
 
-    def _contains_quantities(self, quotes_dict):
+    @property
+    def _contains_quantities(self):
         """tests whether the quotes_dict has quantitities as values, or numbers"""
-        quantity_flags = set(isinstance(quote, Quantity) for quote in quotes_dict.values())
+        quantity_flags = set(isinstance(quote, Quantity) for quote in self.quotes.values())
         if len(quantity_flags) > 1:
             raise UnitError("quotes are ambiguous: contain a mix of Quantities and numbers")
         else:
             return quantity_flags.pop()
 
-    def _parse_quantities(self, quotes_dict, unit):
+    def _parse_quantities(self, unit):
         try:
-            quotes = standardise(quotes_dict, unit)
+            quotes = standardise(self.quotes, unit)
             if unit:
                 unit = unit
             else:
                 unit = set(quantity.unit for quantity in quotes.values()).pop()
             quotes = {key: float(value.value) for key, value in quotes.items()}
             return unit, quotes
-        except UnitError as err:
+        except UnitError:
             raise UnitError("quotes have incompatible units")
 
     def __eq__(self, other):

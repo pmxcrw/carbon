@@ -79,6 +79,11 @@ class LoadShape(object):
     def __contains__(self, lhs):
         return self.intersects(lhs) and self.intersection(lhs) == lhs
 
+    def within(self, other):
+        if isinstance(other, LoadShape):
+            return self in other
+        return False
+
     def difference(self, other, name=None):
         return LoadShape(self.bitmap ^ (self.bitmap & other.bitmap), name)
 

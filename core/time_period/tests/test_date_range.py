@@ -7,7 +7,7 @@ from core.quantity.quantity import DAY
 from core.time_period.date_range import DateRange, LoadShapedDateRange, _RangeType, _NeverType,\
     _AlwaysType, _DayType, _WeekType, _MonthType, _QuarterType, _YearType, _GasYearType,\
     _SummerType, _WinterType
-from core.time_period.load_shape import PEAK
+from core.time_period.load_shape import PEAK, BASE
 
 
 class DateRangeGenericTest(unittest.TestCase):
@@ -57,6 +57,14 @@ class DateRangeGenericTest(unittest.TestCase):
         self.assertTrue(LoadShapedDateRange("2015", "Peak") in self.test_DR1)
         self.assertFalse(LoadShapedDateRange("2020", "Offpeak") in self.test_DR1)
         self.assertFalse(DateRange("3030") in self.test_DR1)
+
+    def test_within(self):
+        self.assertFalse(DateRange('2012-Q4').within(PEAK))
+        self.assertTrue(DateRange('2012-Q4').within(BASE))
+        self.assertFalse(DateRange('2012-Q4').within(LoadShapedDateRange('2012', PEAK)))
+        self.assertTrue(DateRange('2012-Q4').within(LoadShapedDateRange('2012', BASE)))
+        self.assertTrue(DateRange('2012-Q4').within(LoadShapedDateRange('2012-Q4', BASE)))
+        self.assertFalse(DateRange('2012-Q4').within(LoadShapedDateRange('2012-M11', BASE)))
 
     def test_eq(self):
         # doesn't need repeating for other strategy objects

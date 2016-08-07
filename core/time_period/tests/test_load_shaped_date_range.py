@@ -128,6 +128,20 @@ class LoadShapedDateRangeTestCase(unittest.TestCase):
         self.assertFalse(LoadShapedDateRange('2012-Q4', EFAS[0]) in
                          LoadShapedDateRange('2012-M11', HOURS[1]))
 
+    def test_within(self):
+        self.assertTrue(LoadShapedDateRange('2012-Q4', PEAK).within(PEAK))
+        self.assertTrue(LoadShapedDateRange('2012-Q4', PEAK).within(BASE))
+        self.assertFalse(LoadShapedDateRange('2012-Q4', PEAK).within(OFFPEAK))
+        self.assertTrue(LoadShapedDateRange('2012-Q4', PEAK).within(LoadShapedDateRange('2012-Q4', BASE)))
+        self.assertFalse(LoadShapedDateRange('2012-Q4', PEAK).within(LoadShapedDateRange('2012-Q4', OFFPEAK)))
+        self.assertTrue(LoadShapedDateRange('2012-M11', BASE).within(LoadShapedDateRange('2012-Q4', BASE)))
+        self.assertTrue(LoadShapedDateRange('2012-M11', PEAK).within(LoadShapedDateRange('2012-Q4', BASE)))
+        self.assertFalse(LoadShapedDateRange('2012-M11', BASE).within(LoadShapedDateRange('2012-Q4', PEAK)))
+        self.assertFalse(LoadShapedDateRange('2012-Q4', BASE).within(LoadShapedDateRange('2012-M11', BASE)))
+        self.assertFalse(LoadShapedDateRange('2012-Q4', BASE).within(LoadShapedDateRange('2012-M11', PEAK)))
+        self.assertTrue(LoadShapedDateRange('2012-M11', PEAK).within(DateRange('2012-Q4')))
+        self.assertFalse(LoadShapedDateRange('2012-Q4', PEAK).within(DateRange('2012-M11')))
+
     def test_split_by_month(self):
         lsdr = LoadShapedDateRange(DateRange(dt.date(2011, 11, 17),
                                              dt.date(2012, 3, 4)),

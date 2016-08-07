@@ -137,6 +137,14 @@ class TimePeriodSet(frozenset):
         relevant to the requested forward price."""
         return set(partition for partition in self.partition if partition.intersects(other))
 
+    def within(self, other):
+        """
+        Returns whether or not the TimePeriodSet is contained within another time_period.
+
+        :param other: LoadShape, DateRange, or LoadShapedDateRange object
+        :return: Boolean
+        """
+        return all(time_period.within(other) for time_period in self)
 
 class _TimePeriodType(object):
 

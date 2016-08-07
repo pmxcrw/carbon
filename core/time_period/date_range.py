@@ -20,6 +20,10 @@ class AbstractDateRange(object):
         """calculates the settlement dates associated with a date range"""
         return settlement_rule(self).settlement_dates
 
+    def weighted_average_duration(self, function):
+        """calculates the weighted average duration using a given function"""
+        return sum(function(d) * d.duration for d in self) / self.duration
+
     @abstractproperty
     def duration(self):
         """calculates the duration of the date range"""
@@ -151,6 +155,14 @@ class DateRange(AbstractDateRange):
             return self.start <= lhs <= self.end
         elif isinstance(lhs, (DateRange, LoadShapedDateRange)):
             return self.start <= lhs.start and lhs.end <= self.end
+        else:
+            return False
+
+    def within(self, other):
+        if isinstance(other, (DateRange, LoadShapedDateRange)):
+            return self in other
+        elif isinstance(other, LoadShape):
+            return other == BASE
 
     def __eq__(self, rhs):
         # avoid equating with a LoadShapedDateRange
@@ -820,6 +832,8 @@ class LoadShapedDateRange(AbstractDateRange):
     def __init__(self, date_range, load_shape=BASE):
         if isinstance(date_range, str):
             date_range = DateRange(date_range.lower().strip())
+        if isinstance(date_range, dt.date):
+            date_range = DateRange(date_range, range_type='d')
         if isinstance(load_shape, str):
             load_shape = LoadShape(load_shape.lower().strip())
         if isinstance(date_range, DateRange) and\
@@ -915,9 +929,15 @@ class LoadShapedDateRange(AbstractDateRange):
             if lhs in self.date_range:
                 return self.load_shape == BASE
         elif lhs.date_range in self.date_range:
-                return lhs.load_shape in self.load_shape
+            return lhs.load_shape in self.load_shape
         else:
             return False
+
+    def within(self, other):
+        if isinstance(other, (DateRange, LoadShapedDateRange)):
+            return self in other
+        elif isinstance(other, LoadShape):
+            return self.load_shape in other
 
     def split_by_range_type(self, range_type):
         date_ranges = self.date_range.split_by_range_type(range_type)
