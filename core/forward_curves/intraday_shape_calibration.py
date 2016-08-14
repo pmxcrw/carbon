@@ -19,7 +19,7 @@ class BaseIntradayShapeCalibration(object, metaclass=ABCMeta):
     def _load_shape_index(cls, time_period):
         """helper method common to both concrete subclasses, tells us which loadshape block we are in"""
         i = 0
-        while not time_period.within(cls.load_shapes[i]):
+        while not time_period.intersects(cls.load_shapes[i]):
             i += 1
         return i
 

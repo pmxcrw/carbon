@@ -1,6 +1,8 @@
 from core.time_period.time_utilities import SECONDS_PER_DAY
 from core.quantity.quantity import DAY
-from core.forward_curves.abstract_forward_curve import AbstractContinuousForwardPriceCurve, MissingPriceError
+from core.forward_curves.abstract_forward_curve import AbstractContinuousForwardPriceCurve
+from core.forward_curves.shape_ratio import ShapeAlgorithm
+from core.forward_curves.quotes import MissingPriceError
 
 import numpy as np
 
@@ -10,16 +12,17 @@ class CommodityForwardCurve(AbstractContinuousForwardPriceCurve):
     Generic class for Commodity Forward curves.
     """
 
-    def __init__(self, quotes, discount_curve, shape):
+    def __init__(self, quotes, discount_curve, daily_shape_calibration=None, intraday_shape_calibration=None):
         """
         :param quotes: a Quotes object
         :param discount_curve: a DiscountCurve object
-        :param shape: a ShapeAlgorithm object
+        :param daily_shape_calibration: a DailyShapeCalibration object
+        :param intraday_shape_calibration: an IntradayShapeCalibraiton object
         """
-        super().__init__(quotes)
         self._discount_curve = discount_curve
-        self._shape = shape
+        self._shape = ShapeAlgorithm(daily_shape_calibration, intraday_shape_calibration)
         self._settlement_rule = quotes.settlement_rule
+        super().__init__(quotes)
 
     def price(self, time_period):
         if time_period not in self._calc_price_cache:
@@ -36,7 +39,7 @@ class CommodityForwardCurve(AbstractContinuousForwardPriceCurve):
             quoted_duration = quoted_time_period.discounted_duration(self._settlement_rule, self._discount_curve)
             matrix_row = []
             for disjoint_time_period in disjoint_time_periods:
-                intersecting_duration = 0
+                intersecting_duration = 0 * DAY
                 for atomic_period in disjoint_time_period:
                     if atomic_period.intersects(quoted_time_period):
                         intersecting_duration += atomic_period.discounted_duration(self._settlement_rule,

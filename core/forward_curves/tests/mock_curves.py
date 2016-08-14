@@ -19,6 +19,16 @@ dates_to_df = {dt.date(2012, 11, 14): 0.995,
                dt.date(2013, 1, 6): 0.99,
                dt.date(2013, 1, 14): 0.975,
                dt.date(2013, 1, 20): 0.97,
+               dt.date(2013, 2, 1): 0.95,
+               dt.date(2013, 2, 20): 0.94,
+               dt.date(2013, 3, 20): 0.93,
+               dt.date(2013, 4, 20): 0.92,
                dt.date(2014, 1, 1): 0.90}
 
 mock_discount_curve = MockDiscountCurve(dates_to_df)
+
+class MockNullDiscountCurve(object):
+
+    @staticmethod
+    def price(date):
+        return 1

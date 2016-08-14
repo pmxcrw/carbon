@@ -1,8 +1,7 @@
 from core.time_period.date_range import LoadShapedDateRange, DateRange
 from core.time_period.time_utilities import SECONDS_PER_DAY
 from core.time_period.load_shape import BASE
-from core.forward_curves.abstract_forward_curve import AbstractContinuousForwardCurve, AbstractForwardCurve, \
-                                                       MissingPriceError
+from core.forward_curves.abstract_forward_curve import AbstractContinuousForwardCurve, AbstractForwardCurve
 from core.quantity.quantity import DAY
 
 import numpy as np
@@ -132,7 +131,7 @@ class DailyShapeRatioCurve(AbstractContinuousForwardCurve):
             quoted_duration = quoted_time_period.duration
             matrix_row = []
             for disjoint_time_period in disjoint_time_periods:
-                intersecting_duration = 0
+                intersecting_duration = 0 * DAY
                 for atomic_period in disjoint_time_period:
                     if atomic_period.intersects(quoted_time_period):
                         intersecting_duration += atomic_period.duration

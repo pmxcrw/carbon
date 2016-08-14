@@ -1,6 +1,6 @@
 from core.forward_curves.intraday_shape_calibration import PowerIntradayShapeCalibration
 from core.forward_curves.shape_ratio import IntradayShapeRatioCurve, UnshapedDailyRatioCurve
-from core.forward_curves.tests.test_data import intraday_shape_ratios, wd_pk, we_op, wd_op
+from core.forward_curves.tests.testing_data import intraday_shape_ratios, wd_pk, we_op, wd_op
 from core.time_period.date_range import LoadShapedDateRange
 from core.time_period.load_shape import WEEKDAY_HOURS, WEEKEND_HOURS, PEAK, WEEKEND_OFFPEAK, BASE, WEEKDAY_EFAS
 

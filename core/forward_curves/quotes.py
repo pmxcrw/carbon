@@ -9,12 +9,16 @@ class AbstractQuotes(object):
     """
 
     def __init__(self, input_dict):
+        if not input_dict:
+            raise MissingPriceError
         self.quotes = input_dict
         try:
             self.time_period_set = TimePeriodSet(input_dict.keys())
         except ValueError:
             raise ValueError("keys for quotes must be homogeneous DateRange or LoadShapedDateRange objects")
 
+    def __getitem__(self, item):
+        return self.quotes[item]
 
 class ContinuousQuotes(AbstractQuotes):
     """
@@ -59,7 +63,7 @@ class ContinuousQuotes(AbstractQuotes):
             if unit:
                 unit = unit
             else:
-                unit = set(quantity.unit for quantity in quotes.values()).pop()
+                unit = set(quantity.unit for quantity in self.quotes.values()).pop()
             quotes = {key: float(value.value) for key, value in quotes.items()}
             return unit, quotes
         except UnitError:
@@ -71,3 +75,7 @@ class ContinuousQuotes(AbstractQuotes):
         eq &= self.unit == other.unit
         eq &= self.quotes == other.quotes
         return eq
+
+
+class MissingPriceError(Exception):
+    """raised when there is a quote missing that's needed to builds a forward curve"""

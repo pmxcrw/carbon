@@ -11,14 +11,13 @@ class AbstractDailyShapeCalibration(object, metaclass=ABCMeta):
 
     def __init__(self, within_month, quarter_to_month):
         """
-        :param quarter_to_month: dict keyed by LSDR object(s) representing the month,
-                                 and containing corresponding month to quarter ratios.
+        :param quarter_to_month: dict keyed by LoadShape object(s),and containing list of month to quarter ratios.
         :param within_month: dict keyed by LoadShape object(s) and containing corresponding within month shape ratio.
                              e.g. if the loadshape is WEEKEND, the ratio contains the month to day ratio for weekends.
         """
         self.within_month = within_month
         self.quarter_to_month = quarter_to_month
-        self.period_to_quarter = None  # this is over-written by the concrete sub-class
+        self.period_to_quarter = {}  # this is over-written by the concrete sub-class
         self._cached_shape_ratio_forwards = {}
 
     def shape_ratio_curve(self, time_period_set):
@@ -34,8 +33,8 @@ class AbstractDailyShapeCalibration(object, metaclass=ABCMeta):
         period = self._find_period(time_period_set)
         if period not in self._cached_shape_ratio_forwards:
             relative_price_dict = self._tree(period).relative_price_dict
-            self._cached_shape_ratio_forwards = DailyShapeRatioCurve(relative_price_dict)
-        return self._cached_shape_ratio_forwards
+            self._cached_shape_ratio_forwards[period] = DailyShapeRatioCurve(relative_price_dict)
+        return self._cached_shape_ratio_forwards[period]
 
     @abstractmethod
     def _find_period(self, time_period_set):
@@ -52,8 +51,8 @@ class AbstractDailyShapeCalibration(object, metaclass=ABCMeta):
         :param period: LoadShapedDateRange object representing the period (from the concrete class)
         :return: ShapeRatioTree object containing the calibration data for this season and load_shape
         """
-        ratios_and_subtrees = {(self.period_to_quarter[quarter], self._quarter_tree(quarter))
-                               for quarter in period.split_by_quarter}
+        ratios_and_subtrees = {(self.period_to_quarter[quarter.load_shape][index], self._quarter_tree(quarter))
+                               for index, quarter in enumerate(period.split_by_quarter)}
         return _ShapeRatioTree(period, frozenset(ratios_and_subtrees))
 
     def _quarter_tree(self, quarter):
@@ -64,7 +63,8 @@ class AbstractDailyShapeCalibration(object, metaclass=ABCMeta):
         :param quarter: LoadShapedDateRange object representing the quarter
         :return: ShapeRatioTree object containing the calibration data for this quarter and load_shape
         """
-        ratios_and_subtrees = {(self.quarter_to_month[m], self._month_tree(m)) for m in quarter.split_by_month}
+        ratios_and_subtrees = {(self.quarter_to_month[month.load_shape][index], self._month_tree(month))
+                               for index, month in enumerate(quarter.split_by_month)}
         return _ShapeRatioTree(quarter, frozenset(ratios_and_subtrees))
 
     def _month_tree(self, month):
@@ -77,12 +77,10 @@ class AbstractDailyShapeCalibration(object, metaclass=ABCMeta):
         """
         ratio_tree_set = set()
         # Sort to ensure ordering is always the same
-        for sub_load_shape in sorted(self.within_month.keys()):
-            sub_load_shape = sub_load_shape.intersection(month.load_shape)
-            if sub_load_shape != NEVER_LS:
-                sub_tree = _ShapeRatioTree(LoadShapedDateRange(month.date_range, sub_load_shape), frozenset())
-                ratio_tree_set.add((self.within_month[sub_load_shape], sub_tree))
-        return _ShapeRatioTree(LoadShapedDateRange(month), frozenset(ratio_tree_set))
+        for sub_load_shape in self.within_month.keys():
+            sub_tree = _ShapeRatioTree(LoadShapedDateRange(month.date_range, sub_load_shape), frozenset())
+            ratio_tree_set.add((self.within_month[sub_load_shape], sub_tree))
+        return _ShapeRatioTree(month, frozenset(ratio_tree_set))
 
 
 class SeasonBasedDailyShapeCalibration(AbstractDailyShapeCalibration):
@@ -93,8 +91,8 @@ class SeasonBasedDailyShapeCalibration(AbstractDailyShapeCalibration):
 
     def __init__(self, season_to_quarter, quarter_to_month, within_month):
         """
-        :param season_to_quarter: dict keyed by LSDR object(s) representing the quarter,
-                                  and containing corresponding year to quarter ratios.
+        :param season_to_quarter: dict keyed by LoadShape object(s) containing a list, each element of the list being
+                                  the corresponding Q1/WIN, Q2/SUM, Q3/SUM, Q4/WIN ratios
         :param quarter_to_month: dict keyed by LSDR object(s) representing the month,
                                  and containing corresponding month to quarter ratios.
         :param within_month: dict keyed by LoadShape object(s) and containing corresponding within month shape ratio.
@@ -102,8 +100,9 @@ class SeasonBasedDailyShapeCalibration(AbstractDailyShapeCalibration):
         """
         super().__init__(within_month, quarter_to_month)
         self.season_to_quarter = season_to_quarter
-        self.load_shapes = set(time_period.load_shape for time_period in season_to_quarter)
-        assert self.load_shapes == set(time_period.load_shape for time_period in quarter_to_month)
+        self.period_to_quarter = season_to_quarter
+        self.load_shapes = set(season_to_quarter.keys())
+        assert self.load_shapes == set(quarter_to_month.keys())
 
     def _find_period(self, time_period_set):
         """Finds the season that spans the time_period_set"""
@@ -111,8 +110,10 @@ class SeasonBasedDailyShapeCalibration(AbstractDailyShapeCalibration):
         end = max(time_period.end for time_period in time_period_set)
         try:
             season = DateRange(start, range_type="sum")
+            self.period_to_quarter = {key: list[1:3] for key, list in self.season_to_quarter.items()}
         except ValueError:
             season = DateRange(start, range_type="win")
+            self.period_to_quarter = {key: [list[0], list[3]] for key, list in self.season_to_quarter.items()}
         if end not in season:
             raise ValueError("shape information doesn't cover the period being priced")
         for available_load_shape in self.load_shapes:
@@ -141,9 +142,9 @@ class CalendarBasedDailyShapeCalibration(AbstractDailyShapeCalibration):
                              e.g. if the loadshape is WEEKEND, the ratio contains the month to day ratio for weekends.
         """
         super().__init__(within_month, quarter_to_month)
-        self.calendar_to_quater = calendar_to_quarter
-        self.load_shapes = set(time_period.load_shape for time_period in calendar_to_quarter)
-        assert self.load_shapes == set(time_period.load_shape for time_period in quarter_to_month)
+        self.period_to_quarter = calendar_to_quarter
+        self.load_shapes = set(calendar_to_quarter.keys())
+        assert self.load_shapes == set(quarter_to_month.keys())
 
     def _find_period(self, time_period_set):
         """Finds the calendar year that spans the time_period_set"""
@@ -189,18 +190,18 @@ class _ShapeRatioTree(object):
         """
 
         if not self.ratios_and_subtrees:
-            return {}  # we are at a leaf node
+            return AbstractQuotes({self.time_period: 1})  # we are at a leaf node
 
         # create a pseudo forward curve which can be used to scale the relative price dicts of the sub-trees.
         # this means we can avoid having to have pre-normalised raios in our ratios_and_subtrees set
         immediate_relative_price_dict = {sub_tree.time_period: ratio for ratio, sub_tree in self.ratios_and_subtrees}
-        shape_ratio_curve = DailyShapeRatioCurve(immediate_relative_price_dict)
+        shape_ratio_curve = DailyShapeRatioCurve(AbstractQuotes(immediate_relative_price_dict))
         normalisation = shape_ratio_curve.price(self.time_period)
 
         # now iterate through each of the sub-trees, building up our results dict
         results = {}
         for ratio, sub_tree in self.ratios_and_subtrees:
-            sub_dict = sub_tree.relative_price_dict
+            sub_dict = sub_tree.relative_price_dict.quotes
             # normalise using the immediate_period_relative_price
             normalised_sub_dict = {sub_time_period: sub_ratio * shape_ratio_curve.price(sub_time_period) / normalisation
                                    for sub_time_period, sub_ratio in sub_dict.items()}
