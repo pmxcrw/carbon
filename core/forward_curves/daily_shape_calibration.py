@@ -63,7 +63,9 @@ class AbstractDailyShapeCalibration(object, metaclass=ABCMeta):
         :param quarter: LoadShapedDateRange object representing the quarter
         :return: ShapeRatioTree object containing the calibration data for this quarter and load_shape
         """
-        ratios_and_subtrees = {(self.quarter_to_month[month.load_shape][index], self._month_tree(month))
+        offset = quarter.start.month - 1
+        load_shape = quarter.load_shape
+        ratios_and_subtrees = {(self.quarter_to_month[load_shape][index + offset], self._month_tree(month))
                                for index, month in enumerate(quarter.split_by_month)}
         return _ShapeRatioTree(quarter, frozenset(ratios_and_subtrees))
 
@@ -113,7 +115,7 @@ class SeasonBasedDailyShapeCalibration(AbstractDailyShapeCalibration):
             self.period_to_quarter = {key: list[1:3] for key, list in self.season_to_quarter.items()}
         except ValueError:
             season = DateRange(start, range_type="win")
-            self.period_to_quarter = {key: [list[0], list[3]] for key, list in self.season_to_quarter.items()}
+            self.period_to_quarter = {key: [list[3], list[0]] for key, list in self.season_to_quarter.items()}
         if end not in season:
             raise ValueError("shape information doesn't cover the period being priced")
         for available_load_shape in self.load_shapes:
@@ -207,3 +209,12 @@ class _ShapeRatioTree(object):
                                    for sub_time_period, sub_ratio in sub_dict.items()}
             results.update(normalised_sub_dict)
         return AbstractQuotes(results)
+
+    def __eq__(self, other):
+        return self.time_period == other.time_period and self.ratios_and_subtrees == other.ratios_and_subtrees
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        return hash((self.time_period, self.ratios_and_subtrees))

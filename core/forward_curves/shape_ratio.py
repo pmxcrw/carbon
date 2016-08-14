@@ -3,6 +3,7 @@ from core.time_period.time_utilities import SECONDS_PER_DAY
 from core.time_period.load_shape import BASE
 from core.forward_curves.abstract_forward_curve import AbstractContinuousForwardCurve, AbstractForwardCurve
 from core.quantity.quantity import DAY
+from core.forward_curves.quotes import MissingPriceError
 
 import numpy as np
 import datetime as dt
