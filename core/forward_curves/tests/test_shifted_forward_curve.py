@@ -6,7 +6,7 @@ from core.time_period.date_range import DateRange
 from core.time_period.load_shape import WEEKDAY, WEEKEND, BASE
 from core.forward_curves.quotes import ContinuousQuotes
 from core.time_period.settlement_rules import GasSettlementRule
-from core.forward_curves.tests.mock_curves import MockNullDiscountCurve
+from core.forward_curves.tests.mock_curves import null_discount_curve
 
 import datetime as dt
 import unittest
@@ -24,7 +24,7 @@ class ShifftedForwardCurveTestCase(unittest.TestCase):
     def test_shifting_a_month_on_a_monthly_curve(self):
         jan = DateRange("2015-M1")
         feb = DateRange("2015-M2")
-        base_curve = CommodityForwardCurve(self.monthly_quotes, MockNullDiscountCurve)
+        base_curve = CommodityForwardCurve(self.monthly_quotes, null_discount_curve)
         shifted_curve = base_curve.shift(jan, self.shift)
         self.assertEqual(shifted_curve.price(jan), 77 * PENCE / THERM)
         self.assertEqual(shifted_curve.price(feb), 60 * PENCE / THERM)
@@ -33,7 +33,7 @@ class ShifftedForwardCurveTestCase(unittest.TestCase):
         jan = DateRange("2015-M1")
         feb = DateRange("2015-M2")
         q1 = DateRange("2015-Q1")
-        base_curve = CommodityForwardCurve(self.monthly_quotes, MockNullDiscountCurve)
+        base_curve = CommodityForwardCurve(self.monthly_quotes, null_discount_curve)
         shifted_curve = base_curve.shift(q1, self.shift)
         self.assertEqual(shifted_curve.price(jan), 77 * PENCE / THERM)
         self.assertEqual(shifted_curve.price(feb), 66 * PENCE / THERM)
@@ -43,7 +43,7 @@ class ShifftedForwardCurveTestCase(unittest.TestCase):
         jan = DateRange("2015-M1")
         feb = DateRange("2015-M2")
         q1 = DateRange("2015-Q1")
-        base_curve = CommodityForwardCurve(self.monthly_quotes, MockNullDiscountCurve)
+        base_curve = CommodityForwardCurve(self.monthly_quotes, null_discount_curve)
         shifted_curve = base_curve.shift(jan, self.shift)
         self.assertEqual(shifted_curve.price(jan), 77 * PENCE / THERM)
         self.assertEqual(shifted_curve.price(feb), 60 * PENCE / THERM)
@@ -54,7 +54,7 @@ class ShifftedForwardCurveTestCase(unittest.TestCase):
         q_to_m = {BASE: [1.2, 1.2, 0.6, 1.1, 1, 0.9, 1, 1, 1, 1, 1, 1]}
         wdwe = {WEEKDAY: 1.0, WEEKEND: 1.0}
         base_ratios = SeasonBasedDailyShapeCalibration(s_to_q, q_to_m, wdwe)
-        base_curve = CommodityForwardCurve(self.quarterly_quotes, MockNullDiscountCurve, base_ratios)
+        base_curve = CommodityForwardCurve(self.quarterly_quotes, null_discount_curve, base_ratios)
         shift_period = DateRange(dt.date(2015, 1, 1), dt.date(2015, 1, 7))
         shifted_curve = base_curve.shift(shift_period, self.shift)
 

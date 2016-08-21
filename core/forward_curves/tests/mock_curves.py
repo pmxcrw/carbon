@@ -1,12 +1,19 @@
+from core.time_period.date_range import DateRange, LoadShapedDateRange
+from core.forward_curves.fx_rates_forward_curves import DiscountCurve
+from core.quantity.quantity import GBP
+
 import datetime as dt
 
-class MockDiscountCurve(object):
+class MockDiscountCurve(DiscountCurve):
 
     def __init__(self, dates_to_df):
         self.data = dates_to_df
+        self.currency = GBP
 
     def price(self, date):
-        date = getattr(date, "start", date)
+        if isinstance(date, (DateRange, LoadShapedDateRange)):
+            assert date.start == date.end
+            date = date.start
         return self.data[date]
 
 dates_to_df = {dt.date(2012, 11, 14): 0.995,
@@ -27,8 +34,13 @@ dates_to_df = {dt.date(2012, 11, 14): 0.995,
 
 mock_discount_curve = MockDiscountCurve(dates_to_df)
 
-class MockNullDiscountCurve(object):
+class MockNullDiscountCurve(DiscountCurve):
+
+    def __init__(self):
+        self.currency = GBP
 
     @staticmethod
     def price(date):
         return 1
+
+null_discount_curve = MockNullDiscountCurve()

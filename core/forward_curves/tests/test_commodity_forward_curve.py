@@ -3,7 +3,7 @@ from core.forward_curves.shape_ratio import ShapeAlgorithm
 from core.forward_curves.quotes import MissingPriceError
 from core.time_period.settlement_rules import GasSettlementRule, UKPowerSettlementRule
 from core.forward_curves.daily_shape_calibration import SeasonBasedDailyShapeCalibration
-from core.forward_curves.tests.mock_curves import mock_discount_curve, MockNullDiscountCurve
+from core.forward_curves.tests.mock_curves import mock_discount_curve, null_discount_curve
 from core.quantity.quantity import PENCE, THERM, GBP, MWH, DAY
 from core.time_period.date_range import DateRange, LoadShapedDateRange, NEVER_LSDR, NEVER_DR
 from core.time_period.load_shape import BASE, PEAK, OFFPEAK, NEVER_LS, WEEKEND, WEEKDAY
@@ -28,7 +28,7 @@ class CommodityForwardCurveTest(unittest.TestCase):
     def test_gas_price_with_DR(self):
         quotes = ContinuousQuotes({DateRange("2012-Q4"): 9 * PENCE / THERM,
                                    DateRange("2012-M12"): 12 * PENCE / THERM}, GasSettlementRule)
-        curve = CommodityForwardCurve(quotes, MockNullDiscountCurve())
+        curve = CommodityForwardCurve(quotes, null_discount_curve)
         nov_12 = DateRange("2012-M11")
         nov_price = curve.price(nov_12)
         # x*61+12*31=92*9 => x = (92*9-12*31)/61 = 7.4754
@@ -44,7 +44,7 @@ class CommodityForwardCurveTest(unittest.TestCase):
     def test_gas_price_with_LSDR(self):
         quotes = ContinuousQuotes({LoadShapedDateRange("2012-Q4", BASE): 9 * PENCE / THERM,
                                    LoadShapedDateRange("2012-M12", BASE): 12 * PENCE / THERM}, GasSettlementRule)
-        curve = CommodityForwardCurve(quotes, MockNullDiscountCurve())
+        curve = CommodityForwardCurve(quotes, null_discount_curve)
         nov_12 = LoadShapedDateRange("2012-M11", BASE)
         nov_price = curve.price(nov_12)
         # x*61+12*31=92*9 => x = (92*9-12*31)/61 = 7.4754
@@ -60,7 +60,7 @@ class CommodityForwardCurveTest(unittest.TestCase):
         dec_12_base = LoadShapedDateRange("2012-M12", BASE)
         dec_12_peak = LoadShapedDateRange("2012-M12", PEAK)
         quotes = ContinuousQuotes({dec_12_base: 90 * GBP / MWH, dec_12_peak: 120 * GBP / MWH}, UKPowerSettlementRule)
-        curve = CommodityForwardCurve(quotes, MockNullDiscountCurve())
+        curve = CommodityForwardCurve(quotes, null_discount_curve)
         dec_12_offpeak = LoadShapedDateRange("2012-M12", OFFPEAK)
         price = curve.price(dec_12_offpeak)
         OFFPEAK_price = (quotes.quotes[dec_12_base] * dec_12_base.duration -
@@ -81,8 +81,8 @@ class CommodityForwardCurveTest(unittest.TestCase):
         self.assertAlmostEqual(nov_12_price, expected_price)
 
         overlapping = DateRange(dt.date(2012, 11, 30), dt.date(2012, 12, 2))
-        nov_df = mock_discount_curve.price(dt.date(2012, 12, 20))
-        dec_df = mock_discount_curve.price(dt.date(2013, 1, 20))
+        nov_df = mock_discount_curve.price(DateRange("2012-12-20"))
+        dec_df = mock_discount_curve.price(DateRange("2013-1-20"))
         expected = (1 * nov_12_price * nov_df + 2 * 12 * dec_df) / (1 * nov_df + 2 * dec_df)
         overlapping_price = curve.price(overlapping)
         self.assertAlmostEqual(overlapping_price.value, expected, 3)
@@ -96,7 +96,7 @@ class CommodityForwardCurveTest(unittest.TestCase):
         wend = DateRange(dt.date(2012, 1, 28), dt.date(2012, 1, 29))
         bom = DateRange(dt.date(2012, 1, 27), dt.date(2012, 1, 31))
         quotes = ContinuousQuotes({da: 54.5, wend: 54.4, bom: 54.3}, GasSettlementRule, PENCE / THERM)
-        curve = CommodityForwardCurve(quotes, MockNullDiscountCurve)
+        curve = CommodityForwardCurve(quotes, null_discount_curve)
 
         residual_bom = (5 * 54.3 - 2 * 54.4) / 3
 
@@ -115,7 +115,7 @@ class CommodityForwardCurveTest(unittest.TestCase):
         quotes = ContinuousQuotes({DateRange("2010-WIN"): 100,
                                    DateRange("2011-Q1"): 105,
                                    DateRange("2011-SUM"): 90}, GasSettlementRule, PENCE / THERM)
-        curve = CommodityForwardCurve(quotes, MockNullDiscountCurve(), base_ratios)
+        curve = CommodityForwardCurve(quotes, null_discount_curve, base_ratios)
 
         season_price= curve.price(DateRange("2011-SUM"))
         self.assertAlmostEqual(season_price.value, 90)
@@ -151,7 +151,7 @@ class CommodityForwardCurveTest(unittest.TestCase):
         wdwe = {WEEKDAY: 1.1, WEEKEND: 1.0}
         base_ratios = SeasonBasedDailyShapeCalibration(s_to_q, q_to_m, wdwe)
 
-        curve = CommodityForwardCurve(quotes, MockNullDiscountCurve, base_ratios)
+        curve = CommodityForwardCurve(quotes, null_discount_curve, base_ratios)
 
         # 1) Check that the quotes of the quoted shapes are arbitrage free
         self.assertAlmostEqual(curve.price(DateRange("2012-1-3")).value, 54.5)

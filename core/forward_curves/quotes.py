@@ -2,6 +2,7 @@ from core.quantity.quantity import Quantity, standardise, UnitError
 from core.time_period.time_period_sets import TimePeriodSet
 from core.time_period.date_range import DateRange, LoadShapedDateRange
 from core.time_period.load_shape import BASE
+from core.quantity.quantity import Unit
 
 import datetime as dt
 import numpy as np
@@ -43,8 +44,9 @@ class AbstractDailyQuotes(AbstractQuotes):
     Concrete classes (for example) are FX quotes and individual points on a Yield Curve.
     """
 
-    def __init__(self, quotes_dict, unit=None):
+    def __init__(self, quotes_dict, value_date, unit=None):
         super().__init__(quotes_dict)
+        self.value_date = value_date.toordinal()
         self._standardise_keys
         self.dates = np.array(sorted(self.quotes))
 
@@ -56,17 +58,17 @@ class AbstractDailyQuotes(AbstractQuotes):
         output = {}
         for date in self.quotes:
             if isinstance(date, dt.date):
-                output[date.toordinal()] = self.quotes[date]
+                output[date.toordinal() - self.value_date] = self.quotes[date]
             elif isinstance(date, DateRange) and date.start == date.end:
-                output[date.start.toordinal()] = self.quotes[date]
+                output[date.start.toordinal() - self.value_date] = self.quotes[date]
             elif isinstance(date, LoadShapedDateRange) and date.start == date.end and date.load_shape == BASE:
-                output[date.start.toordinal()] = self.quotes[date]
+                output[date.start.toordinal() - self.value_date] = self.quotes[date]
             else:
                 raise TypeError("FX quotes must be daily: {} provided".format(date))
         self.quotes = output
 
 
-class PriceQuotes(AbstractQuotes):
+class CommodityPriceQuotes(AbstractQuotes):
 
     """
     Contains functions used for checking that quotes have valid units
@@ -94,7 +96,7 @@ class PriceQuotes(AbstractQuotes):
             raise UnitError("quotes have incompatible units")
 
 
-class ContinuousQuotes(AbstractContinuousQuotes, PriceQuotes):
+class ContinuousQuotes(AbstractContinuousQuotes, CommodityPriceQuotes):
 
     """
     Generic dictionary of price quotes for continuous delivery periods, from which a forward curve can be built
@@ -131,16 +133,16 @@ class ContinuousQuotes(AbstractContinuousQuotes, PriceQuotes):
         return eq
 
 
-class FxQuotes(AbstractDailyQuotes, PriceQuotes):
+class FxQuotes(AbstractDailyQuotes, CommodityPriceQuotes):
 
-    def __init__(self, quotes_dict, unit=None):
+    def __init__(self, quotes_dict, value_date, unit=None):
         """
         Quotes represent FX rates for a given time.
 
         :param quotes_dict: a dict keyed by dt.Date, DateRange or LoadShapedDateRange with corresponding FX rate.
         :param unit: [optional] a Unit object.
         """
-        super().__init__(quotes_dict)
+        super().__init__(quotes_dict, value_date)
         if self._contains_quantities:
             self.unit, self.quotes = self._parse_quantities(unit)
         elif not unit:
@@ -151,7 +153,7 @@ class FxQuotes(AbstractDailyQuotes, PriceQuotes):
 
 class RatesQuotes(AbstractDailyQuotes):
 
-    def __init__(self, quotes_dict):
+    def __init__(self, currency, quotes_dict, value_date):
         """
         Quotes represent points on a yield curve. A yield curve is a set of actuarial rates r(t, T), meaning that the
         discount factors / ZCB prices are defined as:
@@ -160,15 +162,14 @@ class RatesQuotes(AbstractDailyQuotes):
 
         :param quotes_dict: a dict keyed by dt.Date, DateRange or LoadShapedDateRange objects with corresponding yield.
         """
-        super().__init__(quotes_dict)
+        super().__init__(quotes_dict, value_date)
         if not all(isinstance(value, (int, float)) for value in self.quotes.values()):
             raise TypeError("RatesQuotes can only contain numbers: {} provided"
                             .format({type(value) for value in self.quotes.values()}))
-        self.rates = np.array([self.quotes[date] for date in self.dates])
+        if not isinstance(currency, Unit):
+            raise TypeError("RateQuotes must specify their currency as a valid Unit object: {} given".format(currency))
+        self.currency = currency
 
-    @property
-    def is_null(self):
-        return all(self.rates == 0)
 
 class MissingPriceError(Exception):
     """raised when there is a quote missing that's needed to build a forward curve"""

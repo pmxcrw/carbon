@@ -68,7 +68,7 @@ class ShapeAlgorithm(object):
 
 class UnshapedDailyRatioCurve(AbstractForwardCurve):
 
-    def price(self, time_period):
+    def _new_price(self, time_period):
         return 1
 
 
@@ -82,11 +82,11 @@ class IntradayShapeRatioCurve(AbstractForwardCurve):
         :param input_curve: a ShapeRatioCurve object
         :param intraday_shape_calibration: an IntraDayShapeCalibration object
         """
+        super().__init__()
         self.input_curve = input_curve
         self.intraday_shape_calibration = intraday_shape_calibration
-        self._prices = {}
 
-    def price(self, time_period):
+    def _new_price(self, time_period):
         """
         decorates the input_curve's price function, to overlay hourly shaping if the time_period if relevant
 
@@ -140,12 +140,7 @@ class DailyShapeRatioCurve(AbstractContinuousForwardCurve):
             matrix.append(matrix_row)
         return np.array(matrix)
 
-    def price(self, time_period):
-        if time_period not in self._calc_price_cache:
-            self._calc_price_cache[time_period] = self._calculate_price(time_period)
-        return self._calc_price_cache[time_period]
-
-    def _calculate_price(self, required_time_period):
+    def _new_price(self, required_time_period):
         known_time_period_sets = set(partition for partition in self._time_period_partition_set
                                      if partition.intersects(required_time_period))
         total_price = 0

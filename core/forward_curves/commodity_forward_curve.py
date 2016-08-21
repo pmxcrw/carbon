@@ -1,13 +1,16 @@
 from core.time_period.time_utilities import SECONDS_PER_DAY
 from core.quantity.quantity import DAY
-from core.forward_curves.abstract_forward_curve import AbstractContinuousForwardPriceCurve
+from core.forward_curves.abstract_forward_curve import AbstractContinuousForwardCurve
 from core.forward_curves.shape_ratio import ShapeAlgorithm
-from core.forward_curves.quotes import MissingPriceError
+from core.forward_curves.quotes import MissingPriceError, ContinuousQuotes
+from core.forward_curves.fx_rates_forward_curves import DiscountCurve, ForeignDiscountCurve
+from core.forward_curves.daily_shape_calibration import AbstractDailyShapeCalibration
+from core.forward_curves.intraday_shape_calibration import BaseIntradayShapeCalibration
 
 import numpy as np
 
 
-class CommodityForwardCurve(AbstractContinuousForwardPriceCurve):
+class CommodityForwardCurve(AbstractContinuousForwardCurve):
     """
     Generic class for Commodity Forward curves.
     """
@@ -19,15 +22,18 @@ class CommodityForwardCurve(AbstractContinuousForwardPriceCurve):
         :param daily_shape_calibration: a DailyShapeCalibration object
         :param intraday_shape_calibration: an IntradayShapeCalibraiton object
         """
+        assert isinstance(quotes, ContinuousQuotes)
+        assert isinstance(discount_curve, (DiscountCurve, ForeignDiscountCurve))
+        assert discount_curve.currency.equivalent(quotes.unit.numerator)
+        if daily_shape_calibration:
+            assert isinstance(daily_shape_calibration, AbstractDailyShapeCalibration)
+        if intraday_shape_calibration:
+            assert isinstance(intraday_shape_calibration, BaseIntradayShapeCalibration)
         self._discount_curve = discount_curve
         self._shape = ShapeAlgorithm(daily_shape_calibration, intraday_shape_calibration)
         self._settlement_rule = quotes.settlement_rule
+        self.unit = quotes.unit
         super().__init__(quotes)
-
-    def price(self, time_period):
-        if time_period not in self._calc_price_cache:
-            self._calc_price_cache[time_period] = self._calculate_price(time_period)
-        return self._calc_price_cache[time_period] * self.unit
 
     def _transform_time_periods(self, quoted_time_periods, disjoint_time_periods):
         """Builds an NxN square matrix where:
@@ -48,7 +54,7 @@ class CommodityForwardCurve(AbstractContinuousForwardPriceCurve):
             matrix.append(matrix_row)
         return np.array(matrix)
 
-    def _calculate_price(self, required_time_period):
+    def _new_price(self, required_time_period):
         known_time_period_sets = set(partition for partition in self._time_period_partition_set
                                      if partition.intersects(required_time_period))
         total_price = 0
@@ -73,7 +79,7 @@ class CommodityForwardCurve(AbstractContinuousForwardPriceCurve):
             raise MissingPriceError(msg)
 
         try:
-            return total_price / total_time
+            return total_price / total_time * self.unit
         except Exception:
             raise MissingPriceError("Couldn't calculate price (null delivery?): {}".format(str(required_time_period)))
 

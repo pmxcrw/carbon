@@ -1,5 +1,5 @@
 from abc import abstractproperty, abstractmethod
-from core.quantity.quantity import DAY
+from core.time_period.date_range import DateRange
 
 import datetime as dt
 

@@ -43,45 +43,59 @@ class TestQuotes(unittest.TestCase):
     def test_fx_quotes(self):
         with self.assertRaises(TypeError):
             FxQuotes({DateRange("2016-Q1"): 2 * USD / GBP,
-                      dt.date(2016, 5, 20): 1 * USD / GBP})
+                      dt.date(2016, 5, 20): 1 * USD / GBP},
+                     value_date=dt.date(2013, 12, 31))
         with self.assertRaises(TypeError):
             FxQuotes({LoadShapedDateRange("2016-Q1"): 2 * USD / GBP,
-                      dt.date(2016, 5, 20): 1 * USD / GBP})
+                      dt.date(2016, 5, 20): 1 * USD / GBP},
+                     value_date=dt.date(2013, 12, 31))
         with self.assertRaises(TypeError):
             FxQuotes({LoadShapedDateRange("2016-05-20", "peak"): 2 * USD / GBP,
-                     dt.date(1978, 5, 20): 1 * USD / GBP})
-        expected = {dt.date(2016, 5, 20).toordinal(): 1,
-                    dt.date(2016, 6, 20).toordinal(): 2,
-                    dt.date(2016, 7, 20).toordinal(): 3}
+                     dt.date(1978, 5, 20): 1 * USD / GBP},
+                     value_date=dt.date(2013, 12, 31))
+        expected = {dt.date(2016, 5, 20).toordinal() - dt.date(2013, 12, 31).toordinal(): 1,
+                    dt.date(2016, 6, 20).toordinal() - dt.date(2013, 12, 31).toordinal(): 2,
+                    dt.date(2016, 7, 20).toordinal() - dt.date(2013, 12, 31).toordinal(): 3}
         test = FxQuotes({dt.date(2016, 5, 20): 1 * USD / GBP,
                          DateRange("2016-6-20"): 2 * USD / GBP,
-                         LoadShapedDateRange("2016-7-20", "Base"): 3 * USD / GBP})
+                         LoadShapedDateRange("2016-7-20", "Base"): 3 * USD / GBP},
+                        value_date=dt.date(2013, 12, 31))
         self.assertEqual(test.quotes, expected)
-        expected = np.array([dt.date(2016, 5, 20).toordinal(),
-                             dt.date(2016, 6, 20).toordinal(),
-                             dt.date(2016, 7, 20).toordinal()])
+        expected = np.array([dt.date(2016, 5, 20).toordinal() - dt.date(2013, 12, 31).toordinal(),
+                             dt.date(2016, 6, 20).toordinal() - dt.date(2013, 12, 31).toordinal(),
+                             dt.date(2016, 7, 20).toordinal() - dt.date(2013, 12, 31).toordinal()])
         self.assertTrue(all(test.dates == expected))
 
     def test_RatesQuotes(self):
         with self.assertRaises(TypeError):
-            RatesQuotes({dt.date(2016, 5, 20): 3 * GBP})
+            RatesQuotes(USD,
+                        {dt.date(2016, 5, 20): 3 * GBP},
+                        value_date=dt.date(2013, 12, 31))
         with self.assertRaises(TypeError):
-            RatesQuotes({DateRange("2016-Q1"): 0.2,
-                      dt.date(2016, 5, 20): 0.1})
+            RatesQuotes(USD,
+                        {DateRange("2016-Q1"): 0.2,
+                         dt.date(2016, 5, 20): 0.1},
+                        value_date=dt.date(2013, 12, 31))
         with self.assertRaises(TypeError):
-            RatesQuotes({LoadShapedDateRange("2016-Q1"): 0.2,
-                         dt.date(2016, 5, 20): 0.1})
+            RatesQuotes(USD,
+                        {LoadShapedDateRange("2016-Q1"): 0.2,
+                         dt.date(2016, 5, 20): 0.1},
+                        value_date=dt.date(2013, 12, 31))
         with self.assertRaises(TypeError):
-            RatesQuotes({LoadShapedDateRange("2016-05-20", "peak"): 2 * USD / GBP,
-                         dt.date(1978, 5, 20): 1 * USD / GBP})
-        expected = {dt.date(2016, 5, 20).toordinal(): 0.1,
-                    dt.date(2016, 6, 20).toordinal(): 0.2,
-                    dt.date(2016, 7, 20).toordinal(): 0.3}
-        test = RatesQuotes({dt.date(2016, 5, 20): 0.1,
-                         DateRange("2016-6-20"): 0.2,
-                         LoadShapedDateRange("2016-7-20", "Base"): 0.3})
+            RatesQuotes(USD,
+                        {LoadShapedDateRange("2016-05-20", "peak"): 2 * USD / GBP,
+                         dt.date(1978, 5, 20): 1 * USD / GBP},
+                        value_date=dt.date(2013, 12, 31))
+        expected = {dt.date(2016, 5, 20).toordinal() - dt.date(2013, 12, 31).toordinal(): 0.1,
+                    dt.date(2016, 6, 20).toordinal() - dt.date(2013, 12, 31).toordinal(): 0.2,
+                    dt.date(2016, 7, 20).toordinal() - dt.date(2013, 12, 31).toordinal(): 0.3}
+        test = RatesQuotes(USD,
+                           {dt.date(2016, 5, 20): 0.1,
+                            DateRange("2016-6-20"): 0.2,
+                            LoadShapedDateRange("2016-7-20", "Base"): 0.3},
+                           value_date=dt.date(2013, 12, 31))
         self.assertEqual(test.quotes, expected)
-        expected = np.array([dt.date(2016, 5, 20).toordinal(),
-                             dt.date(2016, 6, 20).toordinal(),
-                             dt.date(2016, 7, 20).toordinal()])
+        expected = np.array([dt.date(2016, 5, 20).toordinal() - dt.date(2013, 12, 31).toordinal(),
+                             dt.date(2016, 6, 20).toordinal() - dt.date(2013, 12, 31).toordinal(),
+                             dt.date(2016, 7, 20).toordinal() - dt.date(2013, 12, 31).toordinal()])
         self.assertTrue(all(test.dates == expected))
