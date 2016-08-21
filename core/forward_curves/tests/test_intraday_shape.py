@@ -2,7 +2,7 @@ from core.forward_curves.shape_ratio import IntradayShapeRatioCurve, DailyShapeR
 from core.forward_curves.tests.testing_data import intraday_shape_ratios
 from core.time_period.load_shape import HOURS, DAYTIME, NIGHTTIME, EFAS
 from core.time_period.date_range import LoadShapedDateRange
-from core.forward_curves.quotes import AbstractQuotes
+from core.forward_curves.quotes import AbstractContinuousQuotes
 
 import datetime as dt
 import unittest
@@ -14,7 +14,7 @@ class IntraDayShapedForwardCurveTestCase(unittest.TestCase):
                   for d in range(0, 10)}
         quotes.update({LoadShapedDateRange(dt.date(2015, 5, 1) + dt.timedelta(d), NIGHTTIME): 100 + d / 37
                        for d in range(0, 10)})
-        quotes = AbstractQuotes(quotes)
+        quotes = AbstractContinuousQuotes(quotes)
         self.curve = DailyShapeRatioCurve(quotes)
         self.intraday_shaped_curve = IntradayShapeRatioCurve(self.curve, intraday_shape_ratios)
 

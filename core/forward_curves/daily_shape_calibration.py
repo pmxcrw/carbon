@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABCMeta
 from core.time_period.load_shape import NEVER_LS
 from core.time_period.date_range import DateRange, LoadShapedDateRange
-from core.forward_curves.quotes import AbstractQuotes
+from core.forward_curves.quotes import AbstractContinuousQuotes
 from core.forward_curves.shape_ratio import DailyShapeRatioCurve
 
 
@@ -192,12 +192,12 @@ class _ShapeRatioTree(object):
         """
 
         if not self.ratios_and_subtrees:
-            return AbstractQuotes({self.time_period: 1})  # we are at a leaf node
+            return AbstractContinuousQuotes({self.time_period: 1})  # we are at a leaf node
 
         # create a pseudo forward curve which can be used to scale the relative price dicts of the sub-trees.
         # this means we can avoid having to have pre-normalised raios in our ratios_and_subtrees set
         immediate_relative_price_dict = {sub_tree.time_period: ratio for ratio, sub_tree in self.ratios_and_subtrees}
-        shape_ratio_curve = DailyShapeRatioCurve(AbstractQuotes(immediate_relative_price_dict))
+        shape_ratio_curve = DailyShapeRatioCurve(AbstractContinuousQuotes(immediate_relative_price_dict))
         normalisation = shape_ratio_curve.price(self.time_period)
 
         # now iterate through each of the sub-trees, building up our results dict
@@ -208,7 +208,7 @@ class _ShapeRatioTree(object):
             normalised_sub_dict = {sub_time_period: sub_ratio * shape_ratio_curve.price(sub_time_period) / normalisation
                                    for sub_time_period, sub_ratio in sub_dict.items()}
             results.update(normalised_sub_dict)
-        return AbstractQuotes(results)
+        return AbstractContinuousQuotes(results)
 
     def __eq__(self, other):
         return self.time_period == other.time_period and self.ratios_and_subtrees == other.ratios_and_subtrees
