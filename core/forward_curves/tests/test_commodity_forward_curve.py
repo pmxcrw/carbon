@@ -1,16 +1,18 @@
-from core.forward_curves.commodity_forward_curve import CommodityForwardCurve
-from core.forward_curves.shape_ratio import ShapeAlgorithm
-from core.forward_curves.quotes import MissingPriceError
-from core.time_period.settlement_rules import GasSettlementRule, UKPowerSettlementRule
-from core.forward_curves.daily_shape_calibration import SeasonBasedDailyShapeCalibration
-from core.forward_curves.tests.mock_curves import mock_discount_curve, null_discount_curve
-from core.quantity.quantity import PENCE, THERM, GBP, MWH, DAY
-from core.time_period.date_range import DateRange, LoadShapedDateRange, NEVER_LSDR, NEVER_DR
-from core.time_period.load_shape import BASE, PEAK, OFFPEAK, NEVER_LS, WEEKEND, WEEKDAY
-from core.forward_curves.quotes import ContinuousQuotes
-
 import datetime as dt
 import unittest
+
+from inputs.market_data.forwards.daily_shape_calibration import SeasonBasedDailyShapeCalibration
+
+from core.base.quantity import PENCE, THERM, GBP, MWH, DAY
+from core.forward_curves.commodity_forward_curve import CommodityForwardCurve
+from core.forward_curves.shape_ratio import ShapeAlgorithm
+from core.forward_curves.tests.mock_curves import mock_discount_curve, null_discount_curve
+from core.time_period.date_range import DateRange, LoadShapedDateRange
+from core.time_period.load_shape import BASE, PEAK, OFFPEAK, WEEKEND, WEEKDAY
+from core.time_period.settlement_rules import GasSettlementRule, UKPowerSettlementRule
+from inputs.market_data.forwards.quotes import ContinuousQuotes
+from inputs.market_data.forwards.quotes import MissingPriceError
+
 
 class CommodityForwardCurveTest(unittest.TestCase):
 
@@ -63,8 +65,8 @@ class CommodityForwardCurveTest(unittest.TestCase):
         curve = CommodityForwardCurve(quotes, null_discount_curve)
         dec_12_offpeak = LoadShapedDateRange("2012-M12", OFFPEAK)
         price = curve.price(dec_12_offpeak)
-        OFFPEAK_price = (quotes.quotes[dec_12_base] * dec_12_base.duration -
-                         quotes.quotes[dec_12_peak] * dec_12_peak.duration) / dec_12_offpeak.duration
+        OFFPEAK_price = (quotes.price_dict[dec_12_base] * dec_12_base.duration -
+                         quotes.price_dict[dec_12_peak] * dec_12_peak.duration) / dec_12_offpeak.duration
         self.assertAlmostEqual(price.value, OFFPEAK_price)
 
     def test_gas_price_with_discount_curve(self):
@@ -153,7 +155,7 @@ class CommodityForwardCurveTest(unittest.TestCase):
 
         curve = CommodityForwardCurve(quotes, null_discount_curve, base_ratios)
 
-        # 1) Check that the quotes of the quoted shapes are arbitrage free
+        # 1) Check that the price_dict of the quoted shapes are arbitrage free
         self.assertAlmostEqual(curve.price(DateRange("2012-1-3")).value, 54.5)
         self.assertAlmostEqual(curve.price(DateRange("2012-1-7")).value, 54.4)
         self.assertAlmostEqual(curve.price(DateRange("2012-1-8")).value, 54.4)
@@ -163,7 +165,7 @@ class CommodityForwardCurveTest(unittest.TestCase):
         weekend_price = curve.price(DateRange("2012-1-28"))
         self.assertAlmostEqual(weekday_price / weekend_price, 1.1, 12)
 
-        # 3) Check weekday / weekend ratio as applied across BOM and the quotes week-end
+        # 3) Check weekday / weekend ratio as applied across BOM and the price_dict week-end
         weekend_price2 = curve.price(DateRange(dt.date(2012, 1, 4), dt.date(2012, 1, 6)))
         self.assertAlmostEqual(weekday_price.value, weekend_price2.value, 12)
 

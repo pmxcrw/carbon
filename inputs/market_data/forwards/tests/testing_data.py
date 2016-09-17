@@ -1,4 +1,4 @@
-from core.forward_curves.intraday_shape_calibration import PowerIntradayShapeCalibration
+from inputs.market_data.forwards.intraday_shape_calibration import PowerIntradayShapeCalibration
 
 wd_op = [
     [0.92683232, 0.959943496, 0.946001405, 0.909513949, 0.902203388, 0.873821797, 0.910526357, 0.986559351, 1.317314975, 1.17287166, 1.109179453, 0.985231848],
@@ -59,7 +59,7 @@ we_pk = [
 
 intraday_shape_ratios = PowerIntradayShapeCalibration([wd_op, wd_pk, we_op, we_pk])
 
-#
+# TODO - cleanup
 # [1.051668119,
 #
 #               1.002654245,

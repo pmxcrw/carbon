@@ -1,13 +1,18 @@
-from core.time_period.time_utilities import SECONDS_PER_DAY
-from core.quantity.quantity import DAY
-from core.forward_curves.abstract_forward_curve import AbstractContinuousForwardCurve
-from core.forward_curves.shape_ratio import ShapeAlgorithm
-from core.forward_curves.quotes import MissingPriceError, ContinuousQuotes
-from core.forward_curves.fx_rates_forward_curves import DiscountCurve, ForeignDiscountCurve
-from core.forward_curves.daily_shape_calibration import AbstractDailyShapeCalibration
-from core.forward_curves.intraday_shape_calibration import BaseIntradayShapeCalibration
+# TODO
+# check the discounting rules in the separation of overlapping - non-overlapping price_dict, this should be changing
+# settlement date conventions between the settlement dates supplied in the input price_dict object and the default
+# settlement dates of the asset.
 
 import numpy as np
+from inputs.market_data.forwards.daily_shape_calibration import AbstractDailyShapeCalibration
+from inputs.market_data.forwards.intraday_shape_calibration import BaseIntradayShapeCalibration
+
+from core.base.quantity import DAY
+from core.forward_curves.abstract_forward_curve import AbstractContinuousForwardCurve
+from core.forward_curves.fx_rates_forward_curves import DiscountCurve, ForeignDiscountCurve
+from core.forward_curves.shape_ratio import ShapeAlgorithm
+from inputs.market_data.forwards.quotes import MissingPriceError, ContinuousQuotes
+from inputs.static_data.time_constants import SECONDS_PER_DAY
 
 
 class CommodityForwardCurve(AbstractContinuousForwardCurve):
@@ -20,7 +25,7 @@ class CommodityForwardCurve(AbstractContinuousForwardCurve):
         :param quotes: a Quotes object
         :param discount_curve: a DiscountCurve object
         :param daily_shape_calibration: a DailyShapeCalibration object
-        :param intraday_shape_calibration: an IntradayShapeCalibraiton object
+        :param intraday_shape_calibration: an IntradayShapeCalibration object
         """
         assert isinstance(quotes, ContinuousQuotes)
         assert isinstance(discount_curve, (DiscountCurve, ForeignDiscountCurve))
@@ -35,6 +40,9 @@ class CommodityForwardCurve(AbstractContinuousForwardCurve):
         self.unit = quotes.unit
         super().__init__(quotes)
 
+    # TODO
+    # should _transform_time_periods be done in the price_dict object? Is there any extra information that makes it a
+    # method of the forward curve?
     def _transform_time_periods(self, quoted_time_periods, disjoint_time_periods):
         """Builds an NxN square matrix where:
                 M_{i,j} = (duration of disjoint_time_period[j] intersecting quoted_time_period[i]) /

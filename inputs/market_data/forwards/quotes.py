@@ -1,105 +1,106 @@
-from core.quantity.quantity import Quantity, standardise, UnitError
-from core.time_period.time_period_sets import TimePeriodSet
+import datetime as dt
+
+import numpy as np
+
+from core.base.quantity import Quantity, standardise, UnitError
+from core.base.quantity import Unit
 from core.time_period.date_range import DateRange, LoadShapedDateRange
 from core.time_period.load_shape import BASE
-from core.quantity.quantity import Unit
+from core.time_period.time_period_sets import TimePeriodSet
 
-import datetime as dt
-import numpy as np
 
 class AbstractQuotes(object):
 
     """
-    Generic dictionary of quotes for building a forward curve
+    Generic dictionary of price_dict for building a forward curve
     """
 
     def __init__(self, input_dict):
         if not input_dict:
             raise MissingPriceError
-        self.quotes = input_dict
+        self.price_dict = input_dict
 
     def __getitem__(self, item):
-        return self.quotes[item]
+        return self.price_dict[item]
 
 
 class AbstractContinuousQuotes(AbstractQuotes):
 
     """
-    Generic dictionary of quotes for continuous delivery periods, from which a forward curve can be built.
+    Generic dictionary of price_dict for continuous delivery periods, from which a forward curve can be built.
     Used (for example) when building shape ratio curves.
     """
 
     def __init__(self, input_dict):
         super().__init__(input_dict)
-        try:
-            self.time_period_set = TimePeriodSet(input_dict.keys())
-        except ValueError:
-            raise ValueError("keys for quotes must be homogeneous DateRange or LoadShapedDateRange objects")
+        key_types = set(type(key) for key in input_dict.keys())
+        if len(key_types) > 1 or not key_types.issubset({DateRange, LoadShapedDateRange}):
+             raise ValueError("keys for price_dict must be homogeneous DateRange or LoadShapedDateRange objects")
 
 
 class AbstractDailyQuotes(AbstractQuotes):
 
     """
-    Generic dictionary of quotes which represent a single date, from which a forward curve can be built.
-    Concrete classes (for example) are FX quotes and individual points on a Yield Curve.
+    Generic dictionary of price_dict which represent a single date, from which a forward curve can be built.
+    Concrete classes (for example) are FX price_dict and individual points on a Yield Curve.
     """
 
     def __init__(self, quotes_dict, value_date, unit=None):
         super().__init__(quotes_dict)
         self.value_date = value_date.toordinal()
         self._standardise_keys
-        self.dates = np.array(sorted(self.quotes))
+        self.dates = np.array(sorted(self.price_dict))
 
     @property
     def _standardise_keys(self):
         """
-        changes self.quotes so that the keys are forced to be ordinals
+        changes self.price_dict so that the keys are forced to be ordinals
         """
         output = {}
-        for date in self.quotes:
+        for date in self.price_dict:
             if isinstance(date, dt.date):
-                output[date.toordinal() - self.value_date] = self.quotes[date]
+                output[date.toordinal() - self.value_date] = self.price_dict[date]
             elif isinstance(date, DateRange) and date.start == date.end:
-                output[date.start.toordinal() - self.value_date] = self.quotes[date]
+                output[date.start.toordinal() - self.value_date] = self.price_dict[date]
             elif isinstance(date, LoadShapedDateRange) and date.start == date.end and date.load_shape == BASE:
-                output[date.start.toordinal() - self.value_date] = self.quotes[date]
+                output[date.start.toordinal() - self.value_date] = self.price_dict[date]
             else:
-                raise TypeError("FX quotes must be daily: {} provided".format(date))
-        self.quotes = output
+                raise TypeError("FX price_dict must be daily: {} provided".format(date))
+        self.price_dict = output
 
 
 class CommodityPriceQuotes(AbstractQuotes):
 
     """
-    Contains functions used for checking that quotes have valid units
+    Contains functions used for checking that price_dict have valid units
     """
 
     @property
     def _contains_quantities(self):
         """tests whether the quantities within quotes_dict are values or numbers"""
-        quantity_flags = set(isinstance(quote, Quantity) for quote in self.quotes.values())
+        quantity_flags = set(isinstance(quote, Quantity) for quote in self.price_dict.values())
         if len(quantity_flags) > 1:
-            raise UnitError("quotes are ambiguous: contain a mix of Quantities and numbers")
+            raise UnitError("price_dict are ambiguous: contain a mix of Quantities and numbers")
         else:
             return quantity_flags.pop()
 
     def _parse_quantities(self, unit):
         try:
-            quotes = standardise(self.quotes, unit)
+            quotes = standardise(self.price_dict, unit)
             if unit:
                 unit = unit
             else:
-                unit = set(quantity.unit for quantity in self.quotes.values()).pop()
+                unit = set(quantity.unit for quantity in self.price_dict.values()).pop()
             quotes = {key: float(value.value) for key, value in quotes.items()}
             return unit, quotes
         except UnitError:
-            raise UnitError("quotes have incompatible units")
+            raise UnitError("price_dict have incompatible units")
 
 
 class ContinuousQuotes(AbstractContinuousQuotes, CommodityPriceQuotes):
 
     """
-    Generic dictionary of price quotes for continuous delivery periods, from which a forward curve can be built
+    Generic dictionary of price price_dict for continuous delivery periods, from which a forward curve can be built
     """
 
     def __init__(self, quotes_dict, settlement_rule, unit=None):
@@ -119,17 +120,16 @@ class ContinuousQuotes(AbstractContinuousQuotes, CommodityPriceQuotes):
         super().__init__(quotes_dict)
         self.settlement_rule = settlement_rule
         if self._contains_quantities:
-            self.unit, self.quotes = self._parse_quantities(unit)
+            self.unit, self.price_dict = self._parse_quantities(unit)
         elif not unit:
-            raise ValueError("quotes have no units, and no unit is provided")
+            raise ValueError("price_dict have no units, and no unit is provided")
         else:
             self.unit = unit
 
     def __eq__(self, other):
-        eq = self.time_period_set == other.time_period_set
-        eq &= self.settlement_rule == other.settlement_rule
+        eq = self.settlement_rule == other.settlement_rule
         eq &= self.unit == other.unit
-        eq &= self.quotes == other.quotes
+        eq &= self.price_dict == other.price_dict
         return eq
 
 
@@ -144,9 +144,9 @@ class FxQuotes(AbstractDailyQuotes, CommodityPriceQuotes):
         """
         super().__init__(quotes_dict, value_date)
         if self._contains_quantities:
-            self.unit, self.quotes = self._parse_quantities(unit)
+            self.unit, self.price_dict = self._parse_quantities(unit)
         elif not unit:
-            raise ValueError("quotes have no units, and no unit is provided")
+            raise ValueError("price_dict have no units, and no unit is provided")
         else:
             self.unit = unit
 
@@ -163,9 +163,9 @@ class RatesQuotes(AbstractDailyQuotes):
         :param quotes_dict: a dict keyed by dt.Date, DateRange or LoadShapedDateRange objects with corresponding yield.
         """
         super().__init__(quotes_dict, value_date)
-        if not all(isinstance(value, (int, float)) for value in self.quotes.values()):
+        if not all(isinstance(value, (int, float)) for value in self.price_dict.values()):
             raise TypeError("RatesQuotes can only contain numbers: {} provided"
-                            .format({type(value) for value in self.quotes.values()}))
+                            .format({type(value) for value in self.price_dict.values()}))
         if not isinstance(currency, Unit):
             raise TypeError("RateQuotes must specify their currency as a valid Unit object: {} given".format(currency))
         self.currency = currency

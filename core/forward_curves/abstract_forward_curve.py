@@ -1,9 +1,11 @@
+import datetime as dt
 from abc import ABCMeta, abstractmethod
-from core.forward_curves.quotes import AbstractContinuousQuotes, AbstractDailyQuotes, MissingPriceError
-from core.time_period.date_range import DateRange, LoadShapedDateRange
 
 import numpy as np
-import datetime as dt
+
+from core.time_period.date_range import DateRange, LoadShapedDateRange
+from core.time_period.time_period_sets import TimePeriodSet
+from inputs.market_data.forwards.quotes import AbstractContinuousQuotes, AbstractDailyQuotes, MissingPriceError
 
 
 class AbstractForwardCurve(object, metaclass=ABCMeta):
@@ -59,25 +61,29 @@ class AbstractForwardCurve(object, metaclass=ABCMeta):
 class AbstractContinuousForwardCurve(AbstractForwardCurve, metaclass=ABCMeta):
 
     """
-    An abstract class for curves that may have overlapping quotes. Provides common methods for resolving the
-    quotes into non-overlapping data. The ._new_price is supplied by concrete sub-classes.
+    An abstract class for curves that may have overlapping price_dict. Provides common methods for resolving the
+    price_dict into non-overlapping data. The ._new_price is supplied by concrete sub-classes.
     """
 
     def __init__(self, quotes):
         super().__init__()
         assert isinstance(quotes, AbstractContinuousQuotes)
-        self._time_period_partition_set = quotes.time_period_set.partition
+        self._time_period_set = TimePeriodSet(quotes.price_dict.keys())
+        self._time_period_partition_set = self._time_period_set.partition
         self._prices = self._generate_disjoint_prices(quotes)
 
+    # TODO
+    # should _generate_disjoint_prices be done in the price_dict object? Is there any extra information that makes it a
+    # method of the forward curve?
     def _generate_disjoint_prices(self, quotes):
         """
-        Transforms the input dictionary, which may contain overlapping quotes, into an equivalent dictionary with
-        non-overlapping quotes (respecting non-arb rules).
+        Transforms the input dictionary, which may contain overlapping price_dict, into an equivalent dictionary with
+        non-overlapping price_dict (respecting non-arb rules).
 
-        :param quotes: the input Dictionary of potentially overlapping quotes
-        :return: a new Dictionary of non-overlapping quotes.
+        :param quotes: the input Dictionary of potentially overlapping price_dict
+        :return: a new Dictionary of non-overlapping price_dict.
         """
-        quoted_time_periods = sorted(quotes.time_period_set, key=str)
+        quoted_time_periods = sorted(self._time_period_set, key=str)
         disjoint_time_periods = sorted(self._time_period_partition_set, key=str)
         quoted_values = np.array([quotes[time_period] for time_period in quoted_time_periods])
         transformation_matrix = self._transform_time_periods(quoted_time_periods, disjoint_time_periods)

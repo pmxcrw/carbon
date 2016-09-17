@@ -1,18 +1,18 @@
-from core.forward_curves.abstract_forward_curve import AbstractDailyForwardCurve, AbstractForwardCurve
-from core.forward_curves.quotes import FxQuotes, RatesQuotes
-from core.forward_curves.quotes import MissingPriceError
-from core.time_period.time_utilities import DAYS_PER_YEAR
-from core.time_period.date_range import DateRange, LoadShapedDateRange
+import datetime as dt
 
 import numpy as np
-import datetime as dt
+
+from core.forward_curves.abstract_forward_curve import AbstractDailyForwardCurve, AbstractForwardCurve
+from core.time_period.date_range import DateRange, LoadShapedDateRange
+from inputs.market_data.forwards.quotes import FxQuotes, RatesQuotes
+from inputs.static_data.time_constants import DAYS_PER_YEAR
 
 
 class FxForwardCurve(AbstractDailyForwardCurve):
 
     def __init__(self, quotes):
         if not isinstance(quotes, FxQuotes):
-            raise TypeError("quotes must be FXQuotes: {} provided".format(type(quotes)))
+            raise TypeError("price_dict must be FXQuotes: {} provided".format(type(quotes)))
         super().__init__(quotes)
         self.unit = quotes.unit
         # pre-calculate the log forwards, since these are used in log-linear interpolation during each .price(period)
@@ -50,7 +50,7 @@ class InverseFxForwardCurve(AbstractForwardCurve):
 class DiscountCurve(AbstractDailyForwardCurve):
 
     """
-    A discount curve depends on a collection of quotes from an actuarial Yield Curve.
+    A discount curve depends on a collection of price_dict from an actuarial Yield Curve.
 
     Given a yield curve date t0, a discount factor is calculated as:
 
@@ -63,7 +63,7 @@ class DiscountCurve(AbstractDailyForwardCurve):
 
     def __init__(self, quotes):
         if not isinstance(quotes, RatesQuotes):
-            raise TypeError("quotes must be RatesQuotes: {} provided".format(type(quotes)))
+            raise TypeError("price_dict must be RatesQuotes: {} provided".format(type(quotes)))
         super().__init__(quotes)
         # interpolation of the yield curve is linear (unlike forward curve)
         self._rates = np.array([quotes[date] for date in self._dates])

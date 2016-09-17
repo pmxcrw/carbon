@@ -1,8 +1,8 @@
 from abc import abstractmethod, ABCMeta
-from core.time_period.load_shape import NEVER_LS
-from core.time_period.date_range import DateRange, LoadShapedDateRange
-from core.forward_curves.quotes import AbstractContinuousQuotes
+
 from core.forward_curves.shape_ratio import DailyShapeRatioCurve
+from core.time_period.date_range import DateRange, LoadShapedDateRange
+from inputs.market_data.forwards.quotes import AbstractContinuousQuotes
 
 
 class AbstractDailyShapeCalibration(object, metaclass=ABCMeta):
@@ -185,7 +185,7 @@ class _ShapeRatioTree(object):
     @property
     def relative_price_dict(self):
         """
-        Produces a dictionary which can be used (like forward quotes) to construct a pseudo forward curve, which can
+        Produces a dictionary which can be used (like forward price_dict) to construct a pseudo forward curve, which can
         then give hte relative price of any time period covered by the tree.
 
         :return: Quotes object which gives the relative prices of the time periods at the leaves of this ratio tree.
@@ -203,7 +203,7 @@ class _ShapeRatioTree(object):
         # now iterate through each of the sub-trees, building up our results dict
         results = {}
         for ratio, sub_tree in self.ratios_and_subtrees:
-            sub_dict = sub_tree.relative_price_dict.quotes
+            sub_dict = sub_tree.relative_price_dict.price_dict
             # normalise using the immediate_period_relative_price
             normalised_sub_dict = {sub_time_period: sub_ratio * shape_ratio_curve.price(sub_time_period) / normalisation
                                    for sub_time_period, sub_ratio in sub_dict.items()}

@@ -1,11 +1,12 @@
-from core.forward_curves.shape_ratio import IntradayShapeRatioCurve, DailyShapeRatioCurve
-from core.forward_curves.tests.testing_data import intraday_shape_ratios
-from core.time_period.load_shape import HOURS, DAYTIME, NIGHTTIME, EFAS
-from core.time_period.date_range import LoadShapedDateRange
-from core.forward_curves.quotes import AbstractContinuousQuotes
-
 import datetime as dt
 import unittest
+
+from core.forward_curves.shape_ratio import IntradayShapeRatioCurve, DailyShapeRatioCurve
+from core.time_period.date_range import LoadShapedDateRange
+from core.time_period.load_shape import HOURS, DAYTIME, NIGHTTIME, EFAS
+from inputs.market_data.forwards.quotes import AbstractContinuousQuotes
+from inputs.market_data.forwards.tests.testing_data import intraday_shape_ratios
+
 
 class IntraDayShapedForwardCurveTestCase(unittest.TestCase):
 

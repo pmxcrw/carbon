@@ -1,11 +1,12 @@
-from core.quantity.quantity import UnitError, _AbstractUnit, _BaseUnit, _DerivedUnit, Unit, Quantity, \
-    _MWH, MWH, _THERM, THERM, DAY, HOUR, MW, _TONNE, TONNE, MMBTU, KWH, MTHERM, _BBL, BBL, \
-    _PENCE, PENCE, _GBP, GBP, _EUR, EUR, _USD, USD, MWH_PER_THERM, DIMENSIONLESS, unique_unit, standardise, \
-    mean, ones, array, amax, empty, reshape, concatenate, var, floor, ceil, arange, zeros, maximum, minimum
-
-import numpy as np
 import datetime as dt
 import unittest
+
+import numpy as np
+
+from core.base.quantity import UnitError, _AbstractUnit, _BaseUnit, _DerivedUnit, Unit, Quantity, \
+    _MWH, MWH, _THERM, THERM, DAY, HOUR, MW, _TONNE, MMBTU, KWH, MTHERM, _BBL, BBL, \
+    _PENCE, PENCE, _GBP, GBP, _EUR, EUR, _USD, USD, MWH_PER_THERM, DIMENSIONLESS, unique_unit, standardise, \
+    mean, ones, array, amax, empty, reshape, concatenate, var, floor, ceil, arange, zeros, maximum, minimum
 
 
 class TestAbstractUnits(unittest.TestCase):
@@ -399,12 +400,12 @@ class QuantityTestCase(unittest.TestCase):
         self.assertEqual(q1a, q1b)
         self.assertEqual(q1c, q1a)
 
-        # check multiplication by quantity without decay but with conversion factor
+        # check multiplication by base without decay but with conversion factor
         q2 = Quantity(np.array([2.0]), DAY * GBP / MWH)
         self.assertEqual(q1a * q2, q1b * q2)
         self.assertEqual(q1a * q2, q1c * q2)
 
-        # check multiplication by quantity with decat and conversion factor
+        # check multiplication by base with decat and conversion factor
         q3 = MWH / DAY * np.array([4])
         q4 = HOUR / MWH * np.array([5])
         self.assertEqual((q3 * q4).unit, DIMENSIONLESS)
@@ -415,11 +416,11 @@ class QuantityTestCase(unittest.TestCase):
         q1b = (1 * MW * 24 * HOUR) / DAY
         self.assertEqual(q1a, q1b)
 
-        # check division by quantity without decay but with conversion factor
+        # check division by base without decay but with conversion factor
         q2 = Quantity(np.ndarray([2.0]), DAY * GBP / MWH)
         self.assertEqual(q1a / q2, q1b / q2)
 
-        # check division by quantity with decay and conversion factor
+        # check division by base with decay and conversion factor
         q3 = MWH / DAY * np.array([4])
         q4 = MWH / HOUR * np.array([5])
         self.assertEqual((q3 / q4).unit, DIMENSIONLESS)

@@ -1,7 +1,7 @@
 import datetime as dt
 import unittest
 
-from core.quantity.quantity import DAY
+from core.base.quantity import DAY
 from core.time_period.date_range import DateRange, _YearType, _DayType, LoadShapedDateRange, NEVER_LSDR
 from core.time_period.load_shape import BASE, PEAK, OFFPEAK, \
     WEEKDAY_OFFPEAK, \

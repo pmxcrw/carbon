@@ -1,11 +1,12 @@
-from core.forward_curves.quotes import ContinuousQuotes, FxQuotes, RatesQuotes
-from core.quantity.quantity import UnitError, Quantity, GBP, PENCE, USD
+import datetime as dt
+import unittest
+
+import numpy as np
+
+from core.base.quantity import UnitError, Quantity, GBP, PENCE, USD
 from core.time_period.date_range import LoadShapedDateRange, DateRange
 from core.time_period.settlement_rules import GasSettlementRule
-
-import unittest
-import datetime as dt
-import numpy as np
+from inputs.market_data.forwards.quotes import ContinuousQuotes, FxQuotes, RatesQuotes
 
 
 class TestQuotes(unittest.TestCase):
@@ -31,12 +32,12 @@ class TestQuotes(unittest.TestCase):
             ContinuousQuotes(self.mixed_date_range_types, GasSettlementRule)
         quantities = ContinuousQuotes(self.quantities, GasSettlementRule)
         self.assertEqual(quantities.unit, GBP)
-        self.assertEqual(quantities.quotes, self.values)
+        self.assertEqual(quantities.price_dict, self.values)
         self.assertEqual(quantities, ContinuousQuotes(self.values, GasSettlementRule, GBP))
         self.assertEqual(quantities, ContinuousQuotes(self.mixed_quantities, GasSettlementRule))
         pence_quantities = ContinuousQuotes(self.quantities, GasSettlementRule, PENCE)
         self.assertEqual(pence_quantities.unit, PENCE)
-        self.assertEqual(pence_quantities.quotes, self.pence_values)
+        self.assertEqual(pence_quantities.price_dict, self.pence_values)
         self.assertEqual(pence_quantities, ContinuousQuotes(self.pence_values, GasSettlementRule, PENCE))
         self.assertEqual(pence_quantities, ContinuousQuotes(self.mixed_quantities, GasSettlementRule, PENCE))
 
@@ -60,7 +61,7 @@ class TestQuotes(unittest.TestCase):
                          DateRange("2016-6-20"): 2 * USD / GBP,
                          LoadShapedDateRange("2016-7-20", "Base"): 3 * USD / GBP},
                         value_date=dt.date(2013, 12, 31))
-        self.assertEqual(test.quotes, expected)
+        self.assertEqual(test.price_dict, expected)
         expected = np.array([dt.date(2016, 5, 20).toordinal() - dt.date(2013, 12, 31).toordinal(),
                              dt.date(2016, 6, 20).toordinal() - dt.date(2013, 12, 31).toordinal(),
                              dt.date(2016, 7, 20).toordinal() - dt.date(2013, 12, 31).toordinal()])
@@ -94,7 +95,7 @@ class TestQuotes(unittest.TestCase):
                             DateRange("2016-6-20"): 0.2,
                             LoadShapedDateRange("2016-7-20", "Base"): 0.3},
                            value_date=dt.date(2013, 12, 31))
-        self.assertEqual(test.quotes, expected)
+        self.assertEqual(test.price_dict, expected)
         expected = np.array([dt.date(2016, 5, 20).toordinal() - dt.date(2013, 12, 31).toordinal(),
                              dt.date(2016, 6, 20).toordinal() - dt.date(2013, 12, 31).toordinal(),
                              dt.date(2016, 7, 20).toordinal() - dt.date(2013, 12, 31).toordinal()])

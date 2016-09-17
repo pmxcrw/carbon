@@ -3,6 +3,7 @@ from core.time_period.date_range import DateRange
 
 import datetime as dt
 
+
 class AbstractSettlementRule(object):
 
     def __init__(self, time_period):

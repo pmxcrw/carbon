@@ -1,12 +1,12 @@
-from core.forward_curves.fx_rates_forward_curves import FxForwardCurve, DiscountCurve, ForeignDiscountCurve, \
-                                                        InverseFxForwardCurve
-from core.forward_curves.quotes import MissingPriceError, FxQuotes, RatesQuotes
-from core.time_period.date_range import DateRange, LoadShapedDateRange
-from core.quantity.quantity import USD, GBP, EUR
-
-import unittest
 import datetime as dt
+import unittest
+
 import numpy as np
+
+from core.base.quantity import USD, GBP, EUR
+from core.forward_curves.fx_rates_forward_curves import FxForwardCurve, DiscountCurve, ForeignDiscountCurve
+from core.time_period.date_range import DateRange, LoadShapedDateRange
+from inputs.market_data.forwards.quotes import MissingPriceError, FxQuotes, RatesQuotes
 
 
 class FxForwardCurveTestCase(unittest.TestCase):

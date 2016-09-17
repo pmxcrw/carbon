@@ -1,15 +1,16 @@
-from core.forward_curves.commodity_forward_curve import CommodityForwardCurve
-from core.forward_curves.shape_ratio import ShapeAlgorithm
-from core.forward_curves.daily_shape_calibration import SeasonBasedDailyShapeCalibration
-from core.quantity.quantity import PENCE, THERM
-from core.time_period.date_range import DateRange
-from core.time_period.load_shape import WEEKDAY, WEEKEND, BASE
-from core.forward_curves.quotes import ContinuousQuotes
-from core.time_period.settlement_rules import GasSettlementRule
-from core.forward_curves.tests.mock_curves import null_discount_curve
-
 import datetime as dt
 import unittest
+
+from inputs.market_data.forwards.daily_shape_calibration import SeasonBasedDailyShapeCalibration
+
+from core.base.quantity import PENCE, THERM
+from core.forward_curves.commodity_forward_curve import CommodityForwardCurve
+from core.forward_curves.tests.mock_curves import null_discount_curve
+from core.time_period.date_range import DateRange
+from core.time_period.load_shape import WEEKDAY, WEEKEND, BASE
+from core.time_period.settlement_rules import GasSettlementRule
+from inputs.market_data.forwards.quotes import ContinuousQuotes
+
 
 class ShifftedForwardCurveTestCase(unittest.TestCase):
 

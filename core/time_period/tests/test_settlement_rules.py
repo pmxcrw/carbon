@@ -1,11 +1,11 @@
+import datetime as dt
+import unittest
+
+from core.base.quantity import DAY
 from core.forward_curves.tests.mock_curves import mock_discount_curve
 from core.time_period.date_range import DateRange, LoadShapedDateRange
 from core.time_period.settlement_rules import GasSettlementRule, UKPowerSettlementRule, DayOfDeliverySettlementRule, \
                                               EUASettlementRule
-from core.quantity.quantity import DAY
-
-import datetime as dt
-import unittest
 
 
 class GasSettlementRuleTest(unittest.TestCase):

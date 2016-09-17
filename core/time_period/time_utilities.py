@@ -1,17 +1,8 @@
 # TODO: analyse whether the Pandas holiday calendars are useful, or is there a more efficient solution
 # TODO: improve docstrings
 
-import datetime as dt
-
 # Global Constants
-DAYS_PER_YEAR = 365.0
-END_OF_WORLD = dt.date.max - dt.timedelta(365)
-START_OF_WORLD = dt.date.min
-MINUTES_PER_HOUR = 60
-SECONDS_PER_DAY = 86400
-MINUTES_PER_DAY = 60 * 24
-SECONDS_PER_MINUTE = 60
-HOURS_PER_DAY = 24
+from inputs.static_data.time_constants import DAYS_PER_YEAR
 
 def time_between(start_date, end_date):
     """Calculates the time between two dates as a fraction of a year"""

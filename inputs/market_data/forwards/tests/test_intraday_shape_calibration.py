@@ -1,11 +1,10 @@
-from core.forward_curves.intraday_shape_calibration import PowerIntradayShapeCalibration
-from core.forward_curves.shape_ratio import IntradayShapeRatioCurve, UnshapedDailyRatioCurve
-from core.forward_curves.tests.testing_data import intraday_shape_ratios, wd_pk, we_op, wd_op
+import unittest
+
+from core.forward_curves.shape_ratio import UnshapedDailyRatioCurve
 from core.time_period.date_range import LoadShapedDateRange
 from core.time_period.load_shape import WEEKDAY_HOURS, WEEKEND_HOURS, PEAK, WEEKEND_OFFPEAK, BASE, WEEKDAY_EFAS
-
-import unittest
-import datetime as dt
+from inputs.market_data.forwards.intraday_shape_calibration import PowerIntradayShapeCalibration
+from inputs.market_data.forwards.tests.testing_data import intraday_shape_ratios, wd_pk, we_op, wd_op
 
 
 class IntraDayShapeCalibrationTestCase(unittest.TestCase):

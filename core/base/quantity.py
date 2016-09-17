@@ -1,7 +1,7 @@
 # TODO: work out why __getstate__ and __setstate__ are being used; possibly to allow multiprocessing or pickling
 # TODO: need to do this for the entire time_period module too, and see if it needs to be implemented.
 
-from core.time_period.time_utilities import DAYS_PER_YEAR
+from inputs.static_data.time_constants import DAYS_PER_YEAR
 
 import abc
 import numpy as np
@@ -584,7 +584,7 @@ class Quantity(object):
             unit = Unit(unit)
             return value, unit
         except ValueError as e:
-            raise ValueError("Can't parse quantity {}: {}".format(string, e))
+            raise ValueError("Can't parse base {}: {}".format(string, e))
 
     # TODO as above, work out whether we need to hash, and implement a FrozenQuantity
     # def __hash__(self):
@@ -600,7 +600,7 @@ class Quantity(object):
 
     def convert(self, other_unit):
         """
-        Converts a quantity into another quantity with a different unit. The value is multiplied by any conversion
+        Converts a base into another base with a different unit. The value is multiplied by any conversion
         factor.
 
         :param other_unit: a Unit object
@@ -749,12 +749,12 @@ class Quantity(object):
 
     def __eq__(self, other):
         """
-        Tests equality of quantity with another object. Is forgiving:
+        Tests equality of base with another object. Is forgiving:
 
             - Two quantities are equal even if they have different units, provided the units
               are compatible and the values compare after converting to equal units
-            - A quantity and unit are equal, provided the units are equal and the value of the quantity is 1
-            - A quantity is equal to zero (integer, float) if all it's values are zero
+            - A base and unit are equal, provided the units are equal and the value of the base is 1
+            - A base is equal to zero (integer, float) if all it's values are zero
             - A quanitty with DIMENSIONLESS unit can be equal to an interger / float if the values are equal.
 
         :param other: the object being compared
@@ -1013,7 +1013,7 @@ def concatenate(quantity_list, axis=0):
             try:
                 values = np.concatenate([values * done.value, quantity.value * new.value], axis)
             except ValueError:
-                # quantity list is a list of zero dimensional ndarrays, so can't be concatenated.
+                # base list is a list of zero dimensional ndarrays, so can't be concatenated.
                 values = [values] if isinstance(values, np.ndarray) else values
                 values = [existing * done.value for existing in values]
                 values += [quantity.value * new.value]

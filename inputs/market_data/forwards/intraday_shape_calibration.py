@@ -1,8 +1,9 @@
 from abc import abstractmethod, ABCMeta
-from core.time_period.load_shape import WEEKDAY_OFFPEAK, PEAK, WEEKEND_OFFPEAK, WEEKEND_PEAK, DAYTIME
-from core.quantity.quantity import HOUR
+
+from core.base.quantity import HOUR
 from core.forward_curves.shape_ratio import IntradayShapeRatioCurve
 from core.time_period.date_range import LoadShapedDateRange
+from core.time_period.load_shape import WEEKDAY_OFFPEAK, PEAK, WEEKEND_OFFPEAK, WEEKEND_PEAK, DAYTIME
 
 
 class BaseIntradayShapeCalibration(object, metaclass=ABCMeta):

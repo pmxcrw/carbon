@@ -1,8 +1,9 @@
-from core.time_period.date_range import DateRange, LoadShapedDateRange
-from core.forward_curves.fx_rates_forward_curves import DiscountCurve
-from core.quantity.quantity import GBP
-
 import datetime as dt
+
+from core.base.quantity import GBP
+from core.forward_curves.fx_rates_forward_curves import DiscountCurve
+from core.time_period.date_range import DateRange, LoadShapedDateRange
+
 
 class MockDiscountCurve(DiscountCurve):
 

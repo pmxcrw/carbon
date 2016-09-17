@@ -1,12 +1,13 @@
-from core.time_period.date_range import LoadShapedDateRange, DateRange
-from core.time_period.time_utilities import SECONDS_PER_DAY
-from core.time_period.load_shape import BASE
-from core.forward_curves.abstract_forward_curve import AbstractContinuousForwardCurve, AbstractForwardCurve
-from core.quantity.quantity import DAY
-from core.forward_curves.quotes import MissingPriceError
+import datetime as dt
 
 import numpy as np
-import datetime as dt
+
+from core.base.quantity import DAY
+from core.forward_curves.abstract_forward_curve import AbstractContinuousForwardCurve, AbstractForwardCurve
+from core.time_period.date_range import LoadShapedDateRange, DateRange
+from core.time_period.load_shape import BASE
+from inputs.market_data.forwards.quotes import MissingPriceError
+from inputs.static_data.time_constants import SECONDS_PER_DAY
 
 
 class ShapeAlgorithm(object):
@@ -119,7 +120,7 @@ class DailyShapeRatioCurve(AbstractContinuousForwardCurve):
 
     """
     A DailyShapeRatioCurve is the equivalent curve we'd get for a daily shaped commodity forward, if all the
-    input quotes had a price of 1.
+    input price_dict had a price of 1.
     """
 
     def _transform_time_periods(self, quoted_time_periods, disjoint_time_periods):
